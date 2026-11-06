@@ -91,8 +91,10 @@ This is a single-user development tool, not an internet-ready multi-tenant servi
 
 ## Public website (GitHub Pages)
 
-A backend-free public demo can be published at
-`https://authorsauravkushwaha.github.io/AIRS-Lab/` once Pages is enabled.
+A backend-free public demo is published at
+`https://authorsauravkushwaha.github.io/AIRS-Lab/`. Pages is enabled with
+**Source → GitHub Actions**, and the `github-pages` environment only permits
+deployments from `main`.
 It uses the same Python-generated synthetic fixtures as the local application.
 New evaluations, run comparisons, failure inspection, and JSON exports work in
 browser JavaScript. Runs (up to 30) and feedback (up to 50) are saved only in that
@@ -107,11 +109,9 @@ python scripts/build_site.py
 python -m http.server 8000 --bind 0.0.0.0 --directory site
 ```
 
-The `Publish website` workflow builds, tests, and deploys from
-`arena/3b86f185-airs-lab`. To enable publishing, a repository owner must open
-**Settings → Pages → Build and deployment → Source → GitHub Actions**.
-Then run **Actions → Publish website → Run workflow**, selecting that branch.
-GitHub integrations without Pages administration permission cannot enable this
-setting automatically. The URL above is the expected address, not proof of a
-successful deployment. A custom `.io` domain requires owning a domain and
-configuring its DNS; none is purchased by this project.
+The `Publish website` workflow builds, tests, and deploys on every push to
+`main`, and can also be started by hand with
+**Actions → Publish website → Run workflow** (choose `main`). Deploying from any
+other branch fails the environment's branch policy, so the workflow is
+deliberately limited to `main`. A custom `.io` domain requires owning a domain
+and configuring its DNS; none is purchased by this project.

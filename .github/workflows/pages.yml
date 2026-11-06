@@ -1,7 +1,7 @@
 name: Publish website
 on:
   push:
-    branches: [arena/3b86f185-airs-lab]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,16 +17,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
       - run: python scripts/build_site.py
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
-      - uses: actions/deploy-pages@v4
+          include-hidden-files: true
+      - uses: actions/deploy-pages@v5
         id: deployment

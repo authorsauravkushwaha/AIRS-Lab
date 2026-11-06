@@ -1,5 +1,20 @@
 import json
+from pathlib import Path
 from scripts.build_site import build
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_pages_workflow_deploys_default_branch():
+    """The github-pages environment and Pages source both allow main only.
+
+    Triggering on a hardcoded arena/* branch silently never publishes.
+    """
+    workflow = (ROOT / '.github/workflows/pages.yml').read_text()
+    assert 'branches: [main]' in workflow
+    assert 'arena/' not in workflow
+    assert 'workflow_dispatch' in workflow
+    assert 'actions/deploy-pages' in workflow
 
 
 def test_public_site_build(tmp_path, monkeypatch):
