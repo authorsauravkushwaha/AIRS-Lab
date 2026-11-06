@@ -102,7 +102,7 @@ export default function Models() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {models.map((m) => (
-            <article key={m.id} className={`panel flex flex-col p-5 transition-opacity ${m.enabled ? '' : 'opacity-65'}`}>
+            <article key={m.id} className={`panel panel-hover flex flex-col p-5 transition-opacity ${m.enabled ? '' : 'opacity-65'}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-line bg-ink-800 text-brand-300">

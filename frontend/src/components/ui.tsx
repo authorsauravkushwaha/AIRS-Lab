@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode, SelectHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import { useEffect } from 'react'
 import { AlertTriangle, Inbox, Loader2, RefreshCw } from 'lucide-react'
 
 /* ---------- Buttons ---------- */
@@ -6,27 +7,28 @@ type ButtonVariant = 'primary' | 'ghost' | 'outline' | 'danger' | 'subtle'
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
   loading?: boolean
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
 }
 const buttonStyles: Record<ButtonVariant, string> = {
   primary:
-    'text-ink-950 bg-brand-grad shadow-glow-sm hover:brightness-110 active:brightness-95 font-semibold',
+    'btn-shine text-ink-950 bg-brand-grad shadow-glow-sm hover:brightness-110 hover:shadow-glow active:brightness-95 font-semibold',
   ghost:
     'text-mute hover:text-slate-100 hover:bg-white/5',
   outline:
-    'text-slate-200 border border-line-strong hover:border-brand-400/40 hover:text-white hover:bg-white/[0.04]',
+    'text-slate-200 border border-line-strong hover:border-brand-400/40 hover:text-white hover:bg-white/[0.04] hover:shadow-glow-sm',
   danger:
     'text-rose-200 border border-rose-400/30 bg-rose-500/10 hover:bg-rose-500/20 hover:border-rose-400/50',
   subtle:
     'text-slate-300 bg-ink-800 border border-line hover:border-line-strong hover:text-white',
 }
+const buttonSizes = { sm: 'px-3 py-1.5 text-[13px]', md: 'px-4 py-2.5', lg: 'px-6 py-3.5 text-[15px]' }
 export function Button({ variant = 'primary', loading, size = 'md', className = '', children, disabled, ...rest }: ButtonProps) {
   return (
     <button
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl text-sm transition-all duration-150 disabled:opacity-45 disabled:cursor-not-allowed ${
-        size === 'sm' ? 'px-3 py-1.5 text-[13px]' : 'px-4 py-2.5'
-      } ${buttonStyles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl text-sm transition-all duration-200 ease-out-expo
+        active:scale-[0.97] disabled:opacity-45 disabled:cursor-not-allowed disabled:active:scale-100
+        ${buttonSizes[size]} ${buttonStyles[variant]} ${className}`}
       {...rest}
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -40,7 +42,9 @@ export function Card({ title, icon, action, children, className = '', pad = true
   title?: ReactNode; icon?: ReactNode; action?: ReactNode; children: ReactNode; className?: string; pad?: boolean
 }) {
   return (
-    <section className={`panel ${pad ? 'p-5 sm:p-6' : ''} ${className}`}>
+    <section className={`panel relative overflow-hidden ${pad ? 'p-5 sm:p-6' : ''} ${className}`}>
+      {/* top edge highlight */}
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-4">
           <h3 className="flex items-center gap-2.5 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-mute">
@@ -102,7 +106,8 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
 export function EmptyState({ title, hint, action, icon }: { title: string; hint?: string; action?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
-      <div className="grid h-14 w-14 place-items-center rounded-2xl border border-line bg-ink-800 text-brand-400">
+      <div className="relative grid h-14 w-14 place-items-center rounded-2xl border border-line bg-ink-800 text-brand-400">
+        <span aria-hidden="true" className="absolute inset-0 rounded-2xl bg-brand-400/5 animate-pulse-dot" />
         {icon ?? <Inbox className="h-6 w-6" />}
       </div>
       <p className="font-display text-base font-semibold text-slate-100">{title}</p>
@@ -153,22 +158,22 @@ export function Ring({ value, size = 120, stroke = 10, label, tone = 'brand' }: 
   const c = 2 * Math.PI * r
   const pct = value === null ? 0 : Math.max(0, Math.min(100, value))
   const dash = (pct / 100) * c
-  const strokeColor = tone === 'emerald' ? '#34d399' : tone === 'amber' ? '#fbbf24' : tone === 'rose' ? '#fb7185' : 'url(#ringGrad)'
+  const strokeColor = tone === 'emerald' ? '#34d399' : tone === 'amber' ? '#fbbf24' : tone === 'rose' ? '#fb7185' : `url(#ringGrad-${size})`
   return (
     <div className="relative inline-grid place-items-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
         <defs>
-          <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={`ringGrad-${size}`} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#22d3ee" /><stop offset="55%" stopColor="#38bdf8" /><stop offset="100%" stopColor="#818cf8" />
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(148,184,255,0.10)" strokeWidth={stroke} fill="none" />
         <circle cx={size / 2} cy={size / 2} r={r} stroke={strokeColor} strokeWidth={stroke} fill="none"
                 strokeLinecap="round" strokeDasharray={`${dash} ${c}`}
-                style={{ transition: 'stroke-dasharray .8s cubic-bezier(.22,1,.36,1)' }} />
+                style={{ transition: 'stroke-dasharray 1s cubic-bezier(.22,1,.36,1)', filter: 'drop-shadow(0 0 6px rgba(34,211,238,.45))' }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-[22px] font-semibold leading-none text-slate-50">
+        <span className="font-display text-[22px] font-semibold leading-none text-slate-50 stat-glow">
           {value === null ? '—' : value.toFixed(1)}
         </span>
         <span className="mt-1 font-mono text-[8.5px] uppercase tracking-[0.2em] text-mute">{label ?? 'pass %'}</span>
@@ -177,15 +182,22 @@ export function Ring({ value, size = 120, stroke = 10, label, tone = 'brand' }: 
   )
 }
 
-/* ---------- Simple modal ---------- */
+/* ---------- Modal (scale-in, esc-to-close) ---------- */
 export function Modal({ open, onClose, title, children, footer, wide }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; wide?: boolean
 }) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/65 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-      <div className={`relative m-0 w-full ${wide ? 'max-w-3xl' : 'max-w-xl'} max-h-[92vh] overflow-y-auto rounded-t-2xl border border-line-strong bg-panel-raised p-6 shadow-glow sm:m-6 sm:rounded-2xl animate-fade-up`}>
+      <div className={`relative m-0 w-full ${wide ? 'max-w-3xl' : 'max-w-xl'} max-h-[92vh] overflow-y-auto rounded-t-2xl border border-line-strong bg-panel-raised p-6 shadow-glow sm:m-6 sm:rounded-2xl animate-scale-in`}>
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="font-display text-lg font-semibold text-slate-50">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="rounded-lg border border-line p-1.5 text-mute transition hover:text-white">

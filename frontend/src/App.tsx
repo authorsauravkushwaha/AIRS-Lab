@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import AppShell from './layout/AppShell'
 import { ToastProvider } from './components/Toast'
+import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import Models from './pages/Models'
@@ -14,25 +15,34 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 
+function Workbench() {
+  return (
+    <AppShell>
+      <Routes>
+        <Route path="/overview" element={<Dashboard />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/models" element={<Models />} />
+        <Route path="/suites" element={<Suites />} />
+        <Route path="/cases" element={<Cases />} />
+        <Route path="/run" element={<RunEval />} />
+        <Route path="/reliability" element={<Reliability />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/compare" element={<Compare />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AppShell>
+  )
+}
+
 export default function App() {
   return (
     <ToastProvider>
-      <AppShell>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/models" element={<Models />} />
-          <Route path="/suites" element={<Suites />} />
-          <Route path="/cases" element={<Cases />} />
-          <Route path="/run" element={<RunEval />} />
-          <Route path="/reliability" element={<Reliability />} />
-          <Route path="/security" element={<Security />} />
-          <Route path="/compare" element={<Compare />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </AppShell>
+      <Routes>
+        <Route index element={<Landing />} />
+        <Route path="/*" element={<Workbench />} />
+      </Routes>
     </ToastProvider>
   )
 }

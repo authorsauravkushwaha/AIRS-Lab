@@ -9,7 +9,7 @@ interface Command {
   id: string; label: string; hint: string; icon: ReactNode; path: string; keywords: string
 }
 const COMMANDS: Command[] = [
-  { id: 'overview', label: 'Go to Overview', hint: 'Navigate', icon: <LayoutDashboard className="h-4 w-4" />, path: '/', keywords: 'home dashboard metrics' },
+  { id: 'overview', label: 'Go to Overview', hint: 'Navigate', icon: <LayoutDashboard className="h-4 w-4" />, path: '/overview', keywords: 'home dashboard metrics' },
   { id: 'projects', label: 'Go to Projects', hint: 'Navigate', icon: <FolderKanban className="h-4 w-4" />, path: '/projects', keywords: 'workspace new project' },
   { id: 'models', label: 'Go to Model Management', hint: 'Navigate', icon: <Boxes className="h-4 w-4" />, path: '/models', keywords: 'model provider mock openai ollama connection' },
   { id: 'suites', label: 'Go to Test Suites', hint: 'Navigate', icon: <Layers className="h-4 w-4" />, path: '/suites', keywords: 'suite collection cases' },
@@ -20,6 +20,7 @@ const COMMANDS: Command[] = [
   { id: 'compare', label: 'Go to Model Comparison', hint: 'Navigate', icon: <GitCompareArrows className="h-4 w-4" />, path: '/compare', keywords: 'compare bake-off models pass rate' },
   { id: 'reports', label: 'Go to Reports', hint: 'Navigate', icon: <FileText className="h-4 w-4" />, path: '/reports', keywords: 'report export pdf csv json download' },
   { id: 'settings', label: 'Go to Settings', hint: 'Navigate', icon: <Settings className="h-4 w-4" />, path: '/settings', keywords: 'settings config audit system danger zone' },
+  { id: 'website', label: 'Back to public website', hint: 'Navigate', icon: <LayoutDashboard className="h-4 w-4" />, path: '/', keywords: 'landing home website marketing' },
 ]
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {

@@ -100,7 +100,8 @@ export default function RunEval() {
               <input
                 type="range" min={1} max={10} step={1} value={repeats}
                 onChange={(e) => setRepeats(Number(e.target.value))}
-                className="mt-2 w-full accent-cyan-400"
+                className="slider mt-3 w-full"
+                style={{ ['--fill' as string]: `${((repeats - 1) / 9) * 100}%` }}
                 aria-label="Repeats for consistency cases"
               />
               <div className="mt-1 flex justify-between font-mono text-[9px] text-mute-dim"><span>1</span><span>5</span><span>10</span></div>

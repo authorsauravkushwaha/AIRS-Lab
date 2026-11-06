@@ -132,8 +132,12 @@ mock results are never presented as real model performance.
 
 ### Features
 
+- **Landing page (`/`)** — public entry point with an animated evaluation-console visual,
+  capability marquee, live workspace counters streamed from the API, bento capability grid,
+  workflow and method sections. The workbench lives at `/overview`.
 - **Overview dashboard** — pass-rate ring, trend of the last 12 completed runs, per-category
-  breakdown, security-severity chart, recent runs, ⌘K command palette.
+  breakdown, security-severity chart, recent runs, ⌘K command palette, animated counters and
+  scroll-reveal motion.
 - **Projects / Models / Test Suites / Test Cases** — full CRUD with modals, optimistic toasts,
   JSON/JSONL import + export, optimistic enable/disable toggles, provider connection tests,
   delete with cascading confirmation (projects cascade to models/suites/cases/runs/evidence).
@@ -156,7 +160,8 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements.txt
 cd frontend && npm ci && npm run build && cd ..
 cd backend && ../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
-# open http://localhost:8000  (first launch seeds a labeled demo workspace)
+# open http://localhost:8000  → landing page; workbench at /overview
+# (first launch seeds a labeled demo workspace)
 ```
 
 Development mode with hot reload: `cd backend && uvicorn app.main:app --reload` (API on :8000)

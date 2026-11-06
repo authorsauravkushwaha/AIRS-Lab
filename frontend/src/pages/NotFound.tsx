@@ -12,7 +12,7 @@ export default function NotFound() {
       <p className="mt-3 max-w-md text-sm leading-relaxed text-mute">
         The route you tried isn’t part of the lab. Head back to the overview and keep shipping with evidence.
       </p>
-      <Link to="/" className="mt-6">
+      <Link to="/overview" className="mt-6">
         <Button><LayoutDashboard className="h-4 w-4" /> Back to Overview</Button>
       </Link>
     </div>
