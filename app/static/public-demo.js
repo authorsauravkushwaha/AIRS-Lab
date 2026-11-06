@@ -32,7 +32,7 @@
         if (body.mode && body.mode !== 'demo') throw new Error('Live evaluation is available only in the self-hosted app.');
         const models = body.models || data.run.summaries.map(s => s.model);
         if (!models.length || new Set(models).size !== models.length || models.some(m => !data.run.summaries.some(s => s.model === m))) throw new Error('Choose valid, distinct demo models.');
-        const run = {...structuredClone(data.run), id:crypto.randomUUID(), created:new Date().toISOString()};
+        const run = {...JSON.parse(JSON.stringify(data.run)), id:crypto.randomUUID(), created:new Date().toISOString()};
         run.summaries = run.summaries.filter(s => models.includes(s.model));
         run.results = run.results.filter(r => models.includes(r.model));
         saveRuns([run, ...runs].slice(0, 30));
