@@ -88,3 +88,30 @@ A [90-second recording script](docs/DEMO.md) is included. **A video has not yet 
 ## Production boundaries
 
 This is a single-user development tool, not an internet-ready multi-tenant service. There is no authentication, rate limiting, queue, request cancellation, or retention scheduler. Live runs are sequential with a 40-second per-request timeout. Before public deployment add authentication/authorization, CSRF defenses appropriate to your auth scheme, rate limits, bounded job queues, retention/deletion controls, encrypted storage and monitoring. Never upload production secrets. SQLite includes full prompts and responses. Exported evidence may be sensitive. Independent expert-reviewed cases, semantic grading, repeated trials, adversarial suites, and larger representative datasets are necessary before release gates.
+
+## Public website (GitHub Pages)
+
+A backend-free public demo can be published at
+`https://authorsauravkushwaha.github.io/AIRS-Lab/` once Pages is enabled.
+It uses the same Python-generated synthetic fixtures as the local application.
+New evaluations, run comparisons, failure inspection, and JSON exports work in
+browser JavaScript. Runs (up to 30) and feedback (up to 50) are saved only in that
+browser's local storage; feedback is **not** delivered to the owner. Clearing site
+data removes them. There are no provider requests, API keys, or shared database.
+Live evaluations require the self-hosted FastAPI application.
+
+Build and preview:
+
+```bash
+python scripts/build_site.py
+python -m http.server 8000 --bind 0.0.0.0 --directory site
+```
+
+The `Publish website` workflow builds, tests, and deploys from
+`arena/3b86f185-airs-lab`. To enable publishing, a repository owner must open
+**Settings → Pages → Build and deployment → Source → GitHub Actions**.
+Then run **Actions → Publish website → Run workflow**, selecting that branch.
+GitHub integrations without Pages administration permission cannot enable this
+setting automatically. The URL above is the expected address, not proof of a
+successful deployment. A custom `.io` domain requires owning a domain and
+configuring its DNS; none is purchased by this project.
