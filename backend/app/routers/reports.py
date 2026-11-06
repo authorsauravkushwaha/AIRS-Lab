@@ -53,6 +53,7 @@ def _collect(run_id: str, db: Session) -> dict:
 @router.post("", status_code=201)
 def create_report(body: ReportRequest, db: Session = Depends(get_db)):
     data = _collect(body.run_id, db)
+    data["title"] = body.title or "AEGIS Evaluation Report"
     rid = str(uuid.uuid4())
     if body.format == "json":
         path = REPORT_DIR / f"{rid}.json"

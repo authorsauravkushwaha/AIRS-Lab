@@ -32,17 +32,27 @@ beforeEach(() => {
   vi.stubGlobal('fetch', mockFetch({ '/api/health': health, '/api/dashboard/overview': overview }))
 })
 
-describe('AEGIS AI LAB frontend', () => {
-  it('renders all main navigation entries', () => {
+describe('AEGIS AI LAB landing page', () => {
+  it('renders the hero and workbench entry points', async () => {
     render(<MemoryRouter><App /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Ship AI you can/i })).toBeInTheDocument())
+    expect(screen.getAllByRole('link', { name: /Open (the )?workbench/i }).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/How evidence works/i)).toBeInTheDocument()
+    expect(screen.getByText(/Honest by design/i)).toBeInTheDocument()
+  })
+})
+
+describe('AEGIS AI LAB workbench', () => {
+  it('renders all main navigation entries', () => {
+    render(<MemoryRouter initialEntries={['/overview']}><App /></MemoryRouter>)
     for (const label of ['Overview', 'Projects', 'Model Management', 'Test Suites', 'Test Cases', 'Run Evaluations', 'Reliability Lab', 'Security Lab', 'Model Comparison', 'Reports', 'Settings']) {
       expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1)
     }
   })
 
   it('dashboard loads overview metrics from the API', async () => {
-    render(<MemoryRouter><App /></MemoryRouter>)
-    await waitFor(() => expect(screen.getByText('66.7')).toBeTruthy())
+    render(<MemoryRouter initialEntries={['/overview']}><App /></MemoryRouter>)
+    await waitFor(() => expect(screen.getAllByText('66.7').length).toBeGreaterThanOrEqual(1))
     expect(screen.getByText('Evaluation runs')).toBeTruthy()
     expect(screen.getByText('Category breakdown')).toBeTruthy()
     expect(screen.getByText('Factual Accuracy')).toBeTruthy()
@@ -50,7 +60,7 @@ describe('AEGIS AI LAB frontend', () => {
 
   it('shows an error state when the API fails', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ detail: 'boom' }), { status: 500 }))))
-    render(<MemoryRouter><App /></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/overview']}><App /></MemoryRouter>)
     await waitFor(() => expect(screen.getByText(/Something went wrong/)).toBeTruthy())
     expect(screen.getByText(/500: boom/)).toBeTruthy()
   })

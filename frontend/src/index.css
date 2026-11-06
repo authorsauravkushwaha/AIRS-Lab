@@ -6,17 +6,22 @@
   color-scheme: dark;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body, #root {
   height: 100%;
 }
 
 body {
   @apply bg-ink-950 text-slate-200 font-sans antialiased;
-  font-feature-settings: "cv11", "ss01";
+  font-feature-settings: "cv11", "ss01", "ss03";
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
-/* Ambient backdrop: fine engineering grid + two brand glows */
+/* ------- Ambient backdrop: engineering grid + brand glows + film grain ------- */
 .app-backdrop {
   background-image:
     radial-gradient(1100px 500px at 12% -10%, rgba(34, 211, 238, 0.075), transparent 60%),
@@ -31,19 +36,37 @@ body {
   mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
 }
 
-/* Panels */
+/* Fine film grain that sits above everything decorative */
+.noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ------- Panels ------- */
 .panel {
   @apply rounded-2xl border border-line bg-panel-sheen bg-panel shadow-panel;
 }
 .panel-hover {
-  transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+  transition: border-color .25s ease, transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease;
 }
 .panel-hover:hover {
-  border-color: rgba(148, 184, 255, 0.2);
+  border-color: rgba(148, 184, 255, 0.22);
   transform: translateY(-2px);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 30px 56px -26px rgba(0,0,0,.7);
 }
 
-/* Inputs */
+/* Glass surface for floating chrome (nav, palette) */
+.glass {
+  background: rgba(10, 14, 26, 0.72);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+}
+
+/* ------- Inputs ------- */
 .field {
   @apply w-full rounded-xl border border-line bg-ink-800 px-3.5 py-2.5 text-sm text-slate-100
     placeholder-mute-dim outline-none transition
@@ -51,13 +74,41 @@ body {
 }
 select.field option { background: #111829; }
 
-/* Scrollbars */
+/* Custom range slider */
+input[type="range"].slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee 0%, #38bdf8 48%, #818cf8 100%) 0/var(--fill, 30%) 100% no-repeat,
+    #151d30;
+  outline: none;
+}
+input[type="range"].slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #e0faff;
+  border: 2px solid #22d3ee;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.55);
+  cursor: pointer;
+  transition: transform .15s ease;
+}
+input[type="range"].slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+input[type="range"].slider::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 999px; background: #e0faff;
+  border: 2px solid #22d3ee; box-shadow: 0 0 12px rgba(34,211,238,.55); cursor: pointer;
+}
+
+/* ------- Scrollbars ------- */
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: #33455e; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* Focus visibility for keyboard users */
+/* ------- Focus visibility ------- */
 :focus-visible {
   outline: 2px solid rgba(34, 211, 238, 0.6);
   outline-offset: 2px;
@@ -66,7 +117,7 @@ select.field option { background: #111829; }
 
 ::selection { background: rgba(34, 211, 238, 0.28); color: #f0f9ff; }
 
-/* Skeleton shimmer */
+/* ------- Skeleton shimmer ------- */
 .skeleton {
   @apply rounded-lg;
   background: linear-gradient(100deg, #0d1322 8%, #151d30 22%, #0d1322 38%);
@@ -74,16 +125,98 @@ select.field option { background: #111829; }
   animation: shimmer 1.5s linear infinite;
 }
 
-/* Gradient hairline divider */
+/* ------- Gradient hairline divider ------- */
 .hairline {
   background: linear-gradient(90deg, transparent, rgba(148, 184, 255, 0.22), transparent);
   height: 1px;
 }
 
-/* Brand text gradient */
+/* ------- Brand text gradient ------- */
 .text-brand {
   background: linear-gradient(120deg, #a5f3fc 0%, #22d3ee 30%, #38bdf8 55%, #818cf8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+.text-brand-anim {
+  background: linear-gradient(115deg, #e0faff, #a5f3fc, #38bdf8, #818cf8, #c4b5fd, #a5f3fc, #e0faff);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pan-grad 9s ease infinite;
+}
+
+/* ------- Buttons: shine sweep on primary ------- */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-shine::before {
+  content: "";
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.35) 50%, transparent 58%);
+  transform: translateX(-110%);
+  transition: transform .7s cubic-bezier(.22,1,.36,1);
+  z-index: 1;
+  pointer-events: none;
+}
+.btn-shine:hover::before { transform: translateX(110%); }
+
+/* ------- Scroll-reveal primitives ------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ------- Landing decoration ------- */
+.hero-beam {
+  position: absolute;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.5), transparent);
+  animation: beam-y 5.5s cubic-bezier(.45,0,.55,1) infinite;
+}
+
+.orbit-ring {
+  border: 1px dashed rgba(148, 184, 255, 0.14);
+  border-radius: 9999px;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 36s linear infinite;
+}
+.marquee-mask {
+  mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
+}
+
+/* kbd chips */
+kbd.chip {
+  @apply rounded-md border border-line bg-ink-800 px-1.5 py-0.5 font-mono text-[10px] text-mute;
+}
+
+/* Ticker used by live stats */
+.stat-glow {
+  text-shadow: 0 0 24px rgba(34, 211, 238, 0.35);
+}
+
+/* ------- Reduced motion ------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal { opacity: 1; transform: none; }
 }

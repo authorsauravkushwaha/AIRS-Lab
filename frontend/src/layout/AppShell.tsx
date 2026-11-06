@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
-  Boxes, ChevronRight, FileText, FlaskConical, GitCompareArrows, Layers, LayoutDashboard,
+  Boxes, ChevronRight, FileText, FlaskConical, GitCompareArrows, Globe, Layers, LayoutDashboard,
   Menu, Play, Search, Settings, ShieldCheck, TestTube2, FolderKanban, X, ExternalLink,
 } from 'lucide-react'
 import CommandPalette from '../components/CommandPalette'
+import Brand from '../components/Brand'
 import { api } from '../api'
 import type { Health } from '../types'
 
@@ -12,7 +13,7 @@ const NAV_SECTIONS: { label: string; items: { to: string; label: string; icon: R
   {
     label: 'Workspace',
     items: [
-      { to: '/', label: 'Overview', icon: <LayoutDashboard className="h-4 w-4" /> },
+      { to: '/overview', label: 'Overview', icon: <LayoutDashboard className="h-4 w-4" /> },
       { to: '/projects', label: 'Projects', icon: <FolderKanban className="h-4 w-4" /> },
       { to: '/models', label: 'Model Management', icon: <Boxes className="h-4 w-4" /> },
     ],
@@ -37,29 +38,6 @@ const NAV_SECTIONS: { label: string; items: { to: string; label: string; icon: R
 ]
 
 const ALL_NAV = NAV_SECTIONS.flatMap((s) => s.items)
-
-function Logo({ compact }: { compact?: boolean }) {
-  return (
-    <Link to="/" className="flex items-center gap-2.5 outline-none" aria-label="AEGIS AI LAB home">
-      <svg viewBox="0 0 64 64" className="h-8 w-8 shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]" aria-hidden="true">
-        <defs>
-          <linearGradient id="navGrad" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#22d3ee" /><stop offset=".55" stopColor="#38bdf8" /><stop offset="1" stopColor="#818cf8" />
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="15" fill="#0b101c" />
-        <path d="M32 7l17 6.4v13.2c0 12-7.1 22.6-17 29.4-9.9-6.8-17-17.4-17-29.4V13.4L32 7z" fill="none" stroke="url(#navGrad)" strokeWidth="4.6" strokeLinejoin="round" />
-        <path d="M32 21.5l3.5 7.1 7.8 1.1-5.7 5.5 1.4 7.8L32 40.8l-7 3.7 1.4-7.8-5.7-5.5 7.8-1.1L32 21.5z" fill="url(#navGrad)" />
-      </svg>
-      {!compact && (
-        <span className="leading-tight">
-          <span className="block font-display text-[17px] font-bold tracking-tight text-slate-50">AEGIS<span className="text-brand">&nbsp;AI&nbsp;LAB</span></span>
-          <span className="block font-mono text-[8.5px] uppercase tracking-[0.3em] text-mute-dim">Reliability · Security</span>
-        </span>
-      )}
-    </Link>
-  )
-}
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -91,17 +69,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <NavLink
       key={item.to}
       to={item.to}
-      end={item.to === '/'}
+      end={item.to === '/overview'}
       className={({ isActive }) =>
-        `group relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-all duration-150 ${
-          isActive ? 'bg-brand-grad-soft text-slate-50' : 'text-mute hover:bg-white/[0.04] hover:text-slate-100'
+        `group relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ease-out-expo ${
+          isActive ? 'bg-brand-grad-soft text-slate-50 shadow-[inset_0_1px_0_rgba(255,255,255,.06)]' : 'text-mute hover:bg-white/[0.04] hover:text-slate-100'
         }`
       }
     >
       {({ isActive }) => (
         <>
-          {isActive && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-grad" />}
-          <span className={isActive ? 'text-brand-300' : 'text-mute-dim transition group-hover:text-brand-300'}>{item.icon}</span>
+          {isActive && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-grad shadow-glow-sm" />}
+          <span className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-brand-300' : 'text-mute-dim group-hover:text-brand-300'}`}>{item.icon}</span>
           <span className="flex-1">{item.label}</span>
         </>
       )}
@@ -111,7 +89,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <aside className="flex h-full w-[248px] shrink-0 flex-col border-r border-line bg-ink-900/80 backdrop-blur-xl">
       <div className="border-b border-line px-5 py-4">
-        <Logo />
+        <Brand />
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Primary">
         {NAV_SECTIONS.map((section) => (
@@ -125,7 +103,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {navLink({ to: '/settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> })}
         </div>
       </nav>
-      <div className="border-t border-line p-4">
+      <div className="space-y-2.5 border-t border-line p-4">
+        <NavLink to="/"
+                 className="flex items-center justify-between rounded-xl border border-line bg-panel px-3 py-2.5 text-[11px] text-mute transition hover:border-line-strong hover:text-slate-100">
+          <span className="flex items-center gap-2"><Globe className="h-3.5 w-3.5 text-brand-400" /> Public website</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </NavLink>
         <div className="rounded-xl border border-line bg-panel p-3">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-mute">System status</span>
@@ -148,7 +131,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   )
 
   return (
-    <div className="app-backdrop relative flex h-screen overflow-hidden">
+    <div className="app-backdrop noise relative flex h-screen overflow-hidden">
+      <a href="#main-content"
+         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-xl focus:border focus:border-line-strong focus:bg-panel-raised focus:px-4 focus:py-2.5 focus:text-sm focus:text-slate-100 focus:shadow-glow">
+        Skip to content
+      </a>
       <div className="app-grid pointer-events-none absolute inset-x-0 top-0 h-[560px]" aria-hidden="true" />
 
       {/* Desktop sidebar */}
@@ -169,7 +156,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <button className="rounded-lg border border-line p-1.5 text-mute hover:text-white lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
               {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
-            <span className="hidden font-mono text-[10px] uppercase tracking-[0.24em] text-mute-dim sm:inline">Workspace</span>
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.24em] text-mute-dim sm:inline">Workbench</span>
             <ChevronRight className="hidden h-3.5 w-3.5 text-mute-dim sm:block" />
             <span className="truncate font-medium text-slate-100">{current}</span>
           </div>
@@ -181,7 +168,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </span>
             <button
               onClick={() => setPaletteOpen(true)}
-              className="group flex items-center gap-2 rounded-xl border border-line bg-panel py-1.5 pl-3 pr-2 text-[12px] text-mute transition hover:border-line-strong hover:text-slate-100"
+              className="group flex items-center gap-2 rounded-xl border border-line bg-panel py-1.5 pl-3 pr-2 text-[12px] text-mute transition hover:border-line-strong hover:text-slate-100 hover:shadow-glow-sm"
               aria-label="Open command palette"
             >
               <Search className="h-3.5 w-3.5" />
