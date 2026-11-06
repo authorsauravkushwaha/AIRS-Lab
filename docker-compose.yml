@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - AEGIS_DATABASE_URL=sqlite:////data/aegis.db
+      - AEGIS_OPENAI_API_KEY=${AEGIS_OPENAI_API_KEY:-}
+    volumes:
+      - aegis-data:/data
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+volumes:
+  aegis-data:

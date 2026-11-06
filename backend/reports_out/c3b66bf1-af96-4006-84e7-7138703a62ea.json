@@ -1,0 +1,38 @@
+{
+  "title": "AEGIS Evaluation Report",
+  "run_id": "88c564a5-4ab6-4812-b404-ba6471453180",
+  "kind": "reliability",
+  "status": "completed",
+  "generated_at": "2026-11-06T11:24:57.677443+00:00",
+  "summary": {
+    "PASS": 2,
+    "FAIL": 0,
+    "UNCERTAIN": 0,
+    "ERROR": 0,
+    "NOT RUN": 0,
+    "pass_rate": 100.0,
+    "avg_latency_ms": 12.0,
+    "total_tokens": 16,
+    "est_cost_usd": 0.0
+  },
+  "results": [
+    {
+      "test_case_id": "5d316941-9cad-48da-8d17-90007b274405",
+      "status": "PASS",
+      "method": "exact-match",
+      "score": 1.0,
+      "latency_ms": 12.0,
+      "tokens": 4
+    },
+    {
+      "test_case_id": "1d274cd7-082e-45da-b7a3-4cd6855802fc",
+      "status": "PASS",
+      "method": "exact-match",
+      "score": 1.0,
+      "latency_ms": 12.0,
+      "tokens": 12
+    }
+  ],
+  "security_findings": [],
+  "limitations": "Rule-based checks only; UNCERTAIN results are not forced to pass/fail. Passing tests does not certify the model as secure."
+}

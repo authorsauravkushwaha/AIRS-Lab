@@ -4,3 +4,13 @@ __pycache__/
 *.sqlite3
 .env
 site/
+
+# AEGIS AI LAB
+.venv/
+node_modules/
+frontend/dist/
+.env
+*.db
+aegis.db
+__pycache__/
+.pytest_cache/

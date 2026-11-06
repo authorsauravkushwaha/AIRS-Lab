@@ -115,3 +115,23 @@ The `Publish website` workflow builds, tests, and deploys on every push to
 other branch fails the environment's branch policy, so the workflow is
 deliberately limited to `main`. A custom `.io` domain requires owning a domain
 and configuring its DNS; none is purchased by this project.
+
+---
+
+## AEGIS AI LAB (full-stack platform)
+
+Enterprise AI reliability, evaluation and security testing platform built on top of this repo.
+
+### Run
+```bash
+# backend
+.venv/bin/pip install -r backend/requirements.txt
+cd backend && ../.venv/bin/uvicorn app.main:app --port 8000
+# frontend
+cd frontend && npm install && npm run dev   # http://localhost:5173 (proxies /api -> :8000)
+# tests
+cd backend && ../.venv/bin/python -m pytest tests/ -q
+```
+
+Demo mode works with zero API keys via the built-in **mock provider** (seeded automatically).
+See `docs/ARCHITECTURE.md` and `docs/API.md`.
