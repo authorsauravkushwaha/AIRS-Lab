@@ -120,18 +120,55 @@ and configuring its DNS; none is purchased by this project.
 
 ## AEGIS AI LAB (full-stack platform)
 
-Enterprise AI reliability, evaluation and security testing platform built on top of this repo.
+AEGIS AI LAB is the full-stack product in this repository: an evaluation workbench for AI
+reliability and security. Shared, versioned test suites; deterministic, explainable graders;
+multi-model comparison; defensive security testing; reproducible JSON/CSV/PDF evidence; and a
+dark-premium single-page app served single-origin by the API.
 
-### Run
+**Status:** v1.0.0 — fully wired end-to-end (no placeholder screens). The default workspace uses
+explicitly labeled synthetic fixtures and a deterministic mock provider. Live mode via
+OpenAI-compatible or Ollama providers is implemented but requires you to supply credentials;
+mock results are never presented as real model performance.
+
+### Features
+
+- **Overview dashboard** — pass-rate ring, trend of the last 12 completed runs, per-category
+  breakdown, security-severity chart, recent runs, ⌘K command palette.
+- **Projects / Models / Test Suites / Test Cases** — full CRUD with modals, optimistic toasts,
+  JSON/JSONL import + export, optimistic enable/disable toggles, provider connection tests,
+  delete with cascading confirmation (projects cascade to models/suites/cases/runs/evidence).
+- **Run Evaluations** — execute a suite against any registered model; repeats control for
+  consistency testing; inline pass-rate ring and breakdown; deletable run history.
+- **Reliability Lab** — per-case evidence with case names, prompts, responses, methods,
+  scores, latency, tokens, status filters and expandable rows.
+- **Security Lab** — synthetic-fixture injection, secret-leakage, tool-policy and output-validation
+  checks with severity filters and concrete mitigations. Tool calls are simulated, never executed.
+- **Model Comparison** — last-5-completed-runs head-to-head with winner banner and evidence table.
+  Descriptive statistics only — no significance or superiority claims.
+- **Reports** — JSON/CSV/PDF exports generated exclusively from stored rows, plus download/delete.
+- **Settings** — non-secret runtime configuration, stored-evidence counters, append-only audit
+  trail of every mutation, and a danger-zone "clear run history".
+
+### Run it (single origin)
+
 ```bash
-# backend
-.venv/bin/pip install -r backend/requirements.txt
-cd backend && ../.venv/bin/uvicorn app.main:app --port 8000
-# frontend
-cd frontend && npm install && npm run dev   # http://localhost:5173 (proxies /api -> :8000)
-# tests
-cd backend && ../.venv/bin/python -m pytest tests/ -q
+python -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt
+cd frontend && npm ci && npm run build && cd ..
+cd backend && ../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+# open http://localhost:8000  (first launch seeds a labeled demo workspace)
 ```
 
-Demo mode works with zero API keys via the built-in **mock provider** (seeded automatically).
-See `docs/ARCHITECTURE.md` and `docs/API.md`.
+Development mode with hot reload: `cd backend && uvicorn app.main:app --reload` (API on :8000)
+and `cd frontend && npm run dev` (UI on :5173, proxies /api → :8000).
+
+Tests: `cd backend && ../.venv/bin/python -m pytest tests/ -q` (22),
+`cd frontend && npx vitest run` (4). Docker: `docker compose up --build`
+(frontend on :5173 via nginx → backend on :8000, SQLite volume at /data).
+
+### Architecture & evidence
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/API.md](docs/API.md) for the full
+module map, the first-run seeder (it executes the real engine — the dashboard you see is genuine
+output over mock fixtures, not hand-drawn charts), and the honesty boundaries: UNCERTAIN is kept
+as evidence, cost is not priced, and no result here certifies a model as safe.

@@ -2,6 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
 body {
-  @apply bg-graphite-950 text-slate-200 antialiased;
+  @apply bg-ink-950 text-slate-200 font-sans antialiased;
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
+}
+
+/* Ambient backdrop: fine engineering grid + two brand glows */
+.app-backdrop {
+  background-image:
+    radial-gradient(1100px 500px at 12% -10%, rgba(34, 211, 238, 0.075), transparent 60%),
+    radial-gradient(900px 520px at 88% -14%, rgba(129, 140, 248, 0.10), transparent 62%),
+    radial-gradient(700px 700px at 55% 120%, rgba(56, 189, 248, 0.05), transparent 60%);
+}
+.app-grid {
+  background-image:
+    linear-gradient(rgba(148, 184, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 184, 255, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+}
+
+/* Panels */
+.panel {
+  @apply rounded-2xl border border-line bg-panel-sheen bg-panel shadow-panel;
+}
+.panel-hover {
+  transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+.panel-hover:hover {
+  border-color: rgba(148, 184, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Inputs */
+.field {
+  @apply w-full rounded-xl border border-line bg-ink-800 px-3.5 py-2.5 text-sm text-slate-100
+    placeholder-mute-dim outline-none transition
+    focus:border-brand-400/50 focus:ring-2 focus:ring-brand-400/20;
+}
+select.field option { background: #111829; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #33455e; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus visibility for keyboard users */
+:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.6);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection { background: rgba(34, 211, 238, 0.28); color: #f0f9ff; }
+
+/* Skeleton shimmer */
+.skeleton {
+  @apply rounded-lg;
+  background: linear-gradient(100deg, #0d1322 8%, #151d30 22%, #0d1322 38%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+/* Gradient hairline divider */
+.hairline {
+  background: linear-gradient(90deg, transparent, rgba(148, 184, 255, 0.22), transparent);
+  height: 1px;
+}
+
+/* Brand text gradient */
+.text-brand {
+  background: linear-gradient(120deg, #a5f3fc 0%, #22d3ee 30%, #38bdf8 55%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

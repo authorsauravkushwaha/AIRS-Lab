@@ -2,6 +2,7 @@
 import csv
 import io
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,11 +14,12 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import EvaluationResult, EvaluationRun, Report, SecurityFinding
+from app.services.audit import log
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
-REPORT_DIR = Path(__file__).resolve().parent.parent.parent / "reports_out"
-REPORT_DIR.mkdir(exist_ok=True)
+REPORT_DIR = Path(os.environ.get("AEGIS_REPORT_DIR", Path(__file__).resolve().parent.parent.parent / "reports_out"))
+REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class ReportRequest(BaseModel):
@@ -89,6 +91,7 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
     rep = Report(id=rid, project_id=body.project_id, run_id=body.run_id, format=body.format,
                  title=body.title, file_path=str(path))
     db.add(rep)
+    log(db, "report.created", entity=rid, detail=f"format={body.format} run={body.run_id}")
     db.commit()
     return {"id": rid, "format": body.format, "file": path.name}
 
@@ -112,3 +115,19 @@ def download(report_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Report file missing")
     media = {"json": "application/json", "csv": "text/csv", "pdf": "application/pdf"}[r.format]
     return FileResponse(path, media_type=media, filename=path.name)
+
+
+@router.delete("/{report_id}", status_code=204)
+def delete_report(report_id: str, db: Session = Depends(get_db)):
+    r = db.get(Report, report_id)
+    if not r:
+        raise HTTPException(404, "Report not found")
+    path = Path(r.file_path)
+    if path.exists():
+        try:
+            path.unlink()
+        except OSError:
+            pass  # row removal still proceeds; orphaned file is harmless in reports_out/
+    log(db, "report.deleted", entity=r.id, detail=f"format={r.format}")
+    db.delete(r)
+    db.commit()

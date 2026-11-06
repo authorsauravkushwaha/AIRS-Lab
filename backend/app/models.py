@@ -18,9 +18,10 @@ class Project(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
-    models: Mapped[list["ModelConfig"]] = relationship(back_populates="project")
-    suites: Mapped[list["TestSuite"]] = relationship(back_populates="project")
-    runs: Mapped[list["EvaluationRun"]] = relationship(back_populates="project")
+    models: Mapped[list["ModelConfig"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    suites: Mapped[list["TestSuite"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    runs: Mapped[list["EvaluationRun"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    reports: Mapped[list["Report"]] = relationship(cascade="all, delete-orphan")
 
 
 class ModelConfig(Base):
@@ -37,7 +38,7 @@ class ModelConfig(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     project: Mapped[Project] = relationship(back_populates="models")
-    runs: Mapped[list["EvaluationRun"]] = relationship(back_populates="model")
+    runs: Mapped[list["EvaluationRun"]] = relationship(back_populates="model", cascade="all, delete-orphan")
 
 
 class TestSuite(Base):
@@ -49,7 +50,7 @@ class TestSuite(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     project: Mapped[Project] = relationship(back_populates="suites")
-    cases: Mapped[list["TestCase"]] = relationship(back_populates="suite")
+    cases: Mapped[list["TestCase"]] = relationship(back_populates="suite", cascade="all, delete-orphan")
 
 
 class TestCase(Base):
@@ -85,8 +86,8 @@ class EvaluationRun(Base):
 
     project: Mapped[Project] = relationship(back_populates="runs")
     model: Mapped[ModelConfig] = relationship(back_populates="runs")
-    results: Mapped[list["EvaluationResult"]] = relationship(back_populates="run")
-    findings: Mapped[list["SecurityFinding"]] = relationship(back_populates="run")
+    results: Mapped[list["EvaluationResult"]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    findings: Mapped[list["SecurityFinding"]] = relationship(back_populates="run", cascade="all, delete-orphan")
 
 
 class EvaluationResult(Base):

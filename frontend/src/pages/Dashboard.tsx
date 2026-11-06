@@ -1,56 +1,204 @@
-import { useEffect, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  ArrowRight, ArrowUpRight, Coins, FlaskConical, Layers, Play, ShieldCheck, TestTube2, Timer,
+} from 'lucide-react'
+import {
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from 'recharts'
 import { api } from '../api'
 import type { Overview } from '../types'
-import { Card, Empty, ErrorMsg, StatusBadge } from '../components/ui'
+import { Button, Card, ErrorMsg, Ring, Skeleton, StatusBadge } from '../components/ui'
+import { fmtCategory, fmtNum, timeAgo } from '../lib/format'
+
+const SEV_COLORS: Record<string, string> = {
+  critical: '#fb7185', high: '#fb923c', medium: '#fbbf24', low: '#38bdf8', info: '#64748b',
+}
+
+function Kpi({ icon, label, value, sub }: { icon: ReactNode; label: string; value: ReactNode; sub?: string }) {
+  return (
+    <div className="panel panel-hover p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-mute">{label}</p>
+        <span className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-ink-800 text-brand-400">{icon}</span>
+      </div>
+      <p className="mt-3 font-display text-[26px] font-semibold leading-none tracking-tight text-slate-50">{value}</p>
+      {sub && <p className="mt-1.5 text-[11px] text-mute-dim">{sub}</p>}
+    </div>
+  )
+}
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [data, setData] = useState<Overview | null>(null)
   const [error, setError] = useState('')
-  useEffect(() => {
-    api<Overview>('/api/dashboard/overview').then(setData).catch((e) => setError(String(e)))
-  }, [])
-  if (error) return <ErrorMsg text={error} />
-  if (!data) return <p className="text-slate-400">Loading…</p>
-  const sevData = Object.entries(data.security_by_severity).map(([k, v]) => ({ severity: k, count: v }))
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-slate-100">Overview Dashboard</h2>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card title="Evaluation runs"><p className="text-3xl font-bold text-slate-100">{data.total_runs}</p></Card>
-        <Card title="Test cases"><p className="text-3xl font-bold text-slate-100">{data.total_test_cases}</p></Card>
-        <Card title="Pass rate"><p className="text-3xl font-bold text-emerald-400">{data.pass_rate ?? 'N/A'}%</p></Card>
-        <Card title="Failed / Uncertain"><p className="text-3xl font-bold text-red-400">{data.failed} / {data.uncertain}</p></Card>
+  const load = () => {
+    setError('')
+    api<Overview>('/api/dashboard/overview').then(setData).catch((e) => setError(e instanceof Error ? e.message : String(e)))
+  }
+  useEffect(load, [])
+
+  if (error) return <ErrorMsg text={error} onRetry={load} />
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-44 w-full" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28" />)}</div>
+        <div className="grid gap-4 lg:grid-cols-5"><Skeleton className="h-64 lg:col-span-3" /><Skeleton className="h-64 lg:col-span-2" /></div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Security findings by severity">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={sevData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e2430" />
-              <XAxis dataKey="severity" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} allowDecimals={false} />
-              <Tooltip contentStyle={{ background: '#1e2430', border: '1px solid #334155' }} />
-              <Bar dataKey="count" fill="#38bdf8" />
+    )
+  }
+
+  const trend = data.pass_rate_trend.filter((t) => t.pass_rate !== null)
+  const severity = Object.entries(data.security_by_severity).map(([severity, count]) => ({ severity, count }))
+  const severityTotal = severity.reduce((a, s) => a + s.count, 0)
+  const passTone = data.pass_rate === null ? 'brand' : data.pass_rate >= 75 ? 'emerald' : data.pass_rate >= 50 ? 'amber' : 'rose'
+
+  return (
+    <div className="space-y-5">
+      {/* Hero band */}
+      <section className="panel relative overflow-hidden p-6 sm:p-8">
+        <div aria-hidden="true" className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-500/10 blur-3xl" />
+        <div aria-hidden="true" className="absolute -left-20 bottom-[-6rem] h-64 w-64 rounded-full bg-brand-600/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-8">
+          <div className="max-w-2xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-400">AEGIS AI LAB · Reliability & Security</p>
+            <h1 className="mt-3 font-display text-[30px] font-semibold leading-[1.12] tracking-tight text-slate-50 sm:text-4xl">
+              Know where your models stand — <span className="text-brand">before your users find out.</span>
+            </h1>
+            <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-mute">
+              One versioned dataset, deterministic rule-based graders, reproducible evidence.
+              Synthetic fixtures run entirely offline; connect a live provider when you are ready.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-2.5">
+              <Button onClick={() => navigate('/run')} className="group">
+                <Play className="h-4 w-4" /> Run evaluation
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/security')}>
+                <ShieldCheck className="h-4 w-4" /> Security suite
+              </Button>
+              <span className="ml-1 font-mono text-[9px] uppercase tracking-[0.2em] text-mute-dim">Mock fixtures · no API keys</span>
+            </div>
+          </div>
+          <div className="hidden shrink-0 md:block">
+            <Ring value={data.pass_rate} size={158} stroke={12} label="pass rate" tone={passTone} />
+          </div>
+        </div>
+      </section>
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Kpi icon={<FlaskConical className="h-4 w-4" />} label="Evaluation runs" value={fmtNum(data.total_runs)} sub={`${fmtNum(data.total_reports)} reports generated`} />
+        <Kpi icon={<TestTube2 className="h-4 w-4" />} label="Test cases" value={fmtNum(data.total_test_cases)} sub="Versioned & shared across models" />
+        <Kpi icon={<Timer className="h-4 w-4" />} label="Avg latency" value={data.avg_latency_ms === null ? '—' : `${fmtNum(Math.round(data.avg_latency_ms))} ms`} sub="Per-case, wall-clock" />
+        <Kpi icon={<Coins className="h-4 w-4" />} label="Tokens processed" value={fmtNum(data.total_tokens)} sub="Input + output, all stored runs" />
+      </div>
+
+      {/* Trend + categories */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Card title="Pass-rate trend" icon={<ArrowUpRight className="h-3.5 w-3.5" />} className="lg:col-span-3"
+              action={<Link to="/reliability" className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-300 hover:text-brand-200">Inspect runs ↗</Link>}>
+          {trend.length === 0 ? (
+            <p className="py-10 text-center text-sm text-mute">No completed runs yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={230}>
+              <AreaChart data={trend} margin={{ top: 8, right: 4, left: -14, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.42} />
+                    <stop offset="100%" stopColor="#818cf8" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 6" stroke="rgba(148,184,255,0.07)" vertical={false} />
+                <XAxis dataKey="label" stroke="#55627a" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 100]} stroke="#55627a" fontSize={10} tickLine={false} axisLine={false} unit="%" />
+                <Tooltip
+                  cursor={{ stroke: 'rgba(148,184,255,0.25)' }}
+                  contentStyle={{ background: '#101828', border: '1px solid rgba(148,184,255,0.18)', borderRadius: 12, fontSize: 12 }}
+                  labelStyle={{ color: '#a5f3fc', marginBottom: 4 }}
+                  formatter={(value: number) => [`${value}%`, 'pass rate']}
+                />
+                <Area type="monotone" dataKey="pass_rate" stroke="#38bdf8" strokeWidth={2.4} fill="url(#trendFill)" dot={{ r: 2.4, fill: '#22d3ee' }} activeDot={{ r: 4.5 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        <Card title="Category breakdown" icon={<Layers className="h-3.5 w-3.5" />} className="lg:col-span-2">
+          {data.category_breakdown.length === 0 ? (
+            <p className="py-10 text-center text-sm text-mute">No graded results yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {data.category_breakdown.map((c) => {
+                const rate = c.pass_rate ?? 0
+                const bar = rate >= 100 ? 'from-emerald-400 to-teal-300' : rate >= 60 ? 'from-sky-400 to-indigo-400' : rate >= 30 ? 'from-amber-400 to-orange-400' : 'from-rose-400 to-red-400'
+                return (
+                  <li key={c.category}>
+                    <div className="mb-1 flex items-baseline justify-between gap-3 text-[12px]">
+                      <span className="text-slate-300">{fmtCategory(c.category)}</span>
+                      <span className="font-mono text-[10.5px] text-mute">{c.passed}/{c.total} · {rate.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
+                      <div className={`h-full rounded-full bg-gradient-to-r ${bar} transition-all duration-700`} style={{ width: `${rate}%` }} />
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </Card>
+      </div>
+
+      {/* Security severity + recent runs */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Card title="Security findings by severity" icon={<ShieldCheck className="h-3.5 w-3.5" />} className="lg:col-span-2"
+              action={<Link to="/security" className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-300 hover:text-brand-200">Open lab ↗</Link>}>
+          <ResponsiveContainer width="100%" height={170}>
+            <BarChart data={severity} margin={{ top: 4, right: 4, left: -26, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 6" stroke="rgba(148,184,255,0.07)" vertical={false} />
+              <XAxis dataKey="severity" stroke="#55627a" fontSize={9.5} tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} stroke="#55627a" fontSize={9.5} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: 'rgba(148,184,255,0.06)' }}
+                contentStyle={{ background: '#101828', border: '1px solid rgba(148,184,255,0.18)', borderRadius: 12, fontSize: 12 }}
+              />
+              <Bar dataKey="count" radius={[5, 5, 0, 0]} maxBarSize={40}>
+                {severity.map((s) => <Cell key={s.severity} fill={SEV_COLORS[s.severity] ?? '#64748b'} fillOpacity={0.9} />)}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
+          <p className="mt-2 text-center font-mono text-[9.5px] uppercase tracking-[0.2em] text-mute-dim">
+            {severityTotal} findings recorded · synthetic fixtures
+          </p>
         </Card>
-        <Card title="Performance">
-          <p className="text-sm text-slate-400">Avg latency: <span className="text-slate-100">{data.avg_latency_ms ?? 'N/A'} ms</span></p>
-          <p className="mt-1 text-sm text-slate-400">Total tokens: <span className="text-slate-100">{data.total_tokens}</span></p>
+
+        <Card title="Recent runs" icon={<Play className="h-3.5 w-3.5" />} className="lg:col-span-3" pad={false}>
+          {data.recent_runs.length === 0 ? (
+            <p className="py-10 text-center text-sm text-mute">No runs yet — <Link to="/run" className="text-brand-300 hover:underline">run your first evaluation</Link>.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {data.recent_runs.slice(0, 6).map((run) => (
+                <li key={run.id} className="flex items-center gap-3 px-5 py-3 transition hover:bg-white/[0.02]">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${run.status === 'completed' ? 'bg-emerald-400' : run.status === 'running' ? 'bg-sky-400 animate-pulse-dot' : 'bg-rose-400'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-slate-200">
+                      <span className="capitalize">{run.kind}</span>
+                      <span className="text-mute-dim"> · </span>
+                      <span className="text-mute">{run.model_name ?? 'Unknown model'}</span>
+                    </p>
+                    <p className="mt-0.5 font-mono text-[9.5px] uppercase tracking-wider text-mute-dim">{timeAgo(run.started_at)}</p>
+                  </div>
+                  {typeof run.summary?.pass_rate === 'number' && (
+                    <span className="font-display text-sm font-semibold text-slate-100">{(run.summary.pass_rate as number).toFixed(1)}%</span>
+                  )}
+                  <StatusBadge status={run.status} />
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
       </div>
-      <Card title="Recent test runs">
-        {data.recent_runs.length === 0 ? <Empty text="No runs yet — go to Run Evaluations." /> : (
-          <ul className="divide-y divide-slate-800">
-            {data.recent_runs.map((r) => (
-              <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-slate-300">{r.kind} · {r.started_at.slice(0, 19).replace('T', ' ')}</span>
-                <StatusBadge status={r.status} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
     </div>
   )
 }
