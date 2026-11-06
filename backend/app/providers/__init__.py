@@ -6,7 +6,7 @@ from app.providers.mock import MockProvider
 
 def get_provider(config: ModelConfig) -> BaseProvider:
     if config.provider == "mock":
-        return MockProvider()
+        return MockProvider(config.model_id)
     if config.provider == "openai_compat":
         from app.providers.openai_compat import OpenAICompatProvider
         return OpenAICompatProvider(config)

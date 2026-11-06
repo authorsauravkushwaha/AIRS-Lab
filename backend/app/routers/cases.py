@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import TestCase, TestSuite
-from app.schemas import CaseIn, CaseOut
+from app.schemas import CaseIn, CaseOut, CaseUpdate
+from app.services.audit import log
 
 router = APIRouter(prefix="/api/test-cases", tags=["test-cases"])
 
@@ -37,6 +38,7 @@ def create_case(body: CaseIn, db: Session = Depends(get_db)):
         evaluation_criteria=body.evaluation_criteria,
     )
     db.add(c)
+    log(db, "case.created", entity=c.id, detail=c.name)
     db.commit()
     db.refresh(c)
     return _out(c)
@@ -83,8 +85,28 @@ async def import_cases(file: UploadFile = File(...), db: Session = Depends(get_d
         )
         db.add(c)
         created += 1
+    log(db, "case.imported", detail=f"imported={created}")
     db.commit()
     return {"imported": created}
+
+
+@router.patch("/{case_id}", response_model=CaseOut)
+def update_case(case_id: str, body: CaseUpdate, db: Session = Depends(get_db)):
+    c = db.get(TestCase, case_id)
+    if not c:
+        raise HTTPException(404, "Test case not found")
+    changes = body.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        if field == "expected_keywords" or field == "source_docs":
+            setattr(c, field, json.dumps(value or []))
+        elif field == "expected_schema":
+            setattr(c, field, json.dumps(value) if value else "")
+        else:
+            setattr(c, field, value)
+    log(db, "case.updated", entity=c.id, detail=c.name)
+    db.commit()
+    db.refresh(c)
+    return _out(c)
 
 
 @router.post("/{case_id}/duplicate", response_model=CaseOut, status_code=201)
@@ -99,6 +121,7 @@ def duplicate_case(case_id: str, db: Session = Depends(get_db)):
         severity=c.severity, evaluation_criteria=c.evaluation_criteria,
     )
     db.add(dup)
+    log(db, "case.duplicated", entity=dup.id, detail=dup.name)
     db.commit()
     db.refresh(dup)
     return _out(dup)
@@ -109,5 +132,6 @@ def delete_case(case_id: str, db: Session = Depends(get_db)):
     c = db.get(TestCase, case_id)
     if not c:
         raise HTTPException(404, "Test case not found")
+    log(db, "case.deleted", entity=c.id, detail=c.name)
     db.delete(c)
     db.commit()

@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Project, TestCase, TestSuite
-from app.schemas import SuiteIn, SuiteOut
+from app.schemas import SuiteIn, SuiteOut, SuiteUpdate
+from app.services.audit import log
 
 router = APIRouter(prefix="/api/test-suites", tags=["test-suites"])
 
@@ -24,6 +25,7 @@ def create_suite(body: SuiteIn, db: Session = Depends(get_db)):
         raise HTTPException(404, "Project not found")
     s = TestSuite(id=str(uuid.uuid4()), project_id=body.project_id, name=body.name, description=body.description)
     db.add(s)
+    log(db, "suite.created", entity=s.id, detail=s.name)
     db.commit()
     db.refresh(s)
     return _out(s)
@@ -37,10 +39,24 @@ def list_suites(project_id: str | None = None, db: Session = Depends(get_db)):
     return [_out(s) for s in q.order_by(TestSuite.created_at.desc()).all()]
 
 
+@router.patch("/{suite_id}", response_model=SuiteOut)
+def update_suite(suite_id: str, body: SuiteUpdate, db: Session = Depends(get_db)):
+    s = db.get(TestSuite, suite_id)
+    if not s:
+        raise HTTPException(404, "Suite not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(s, field, value)
+    log(db, "suite.updated", entity=s.id, detail=s.name)
+    db.commit()
+    db.refresh(s)
+    return _out(s)
+
+
 @router.delete("/{suite_id}", status_code=204)
 def delete_suite(suite_id: str, db: Session = Depends(get_db)):
     s = db.get(TestSuite, suite_id)
     if not s:
         raise HTTPException(404, "Suite not found")
+    log(db, "suite.deleted", entity=s.id, detail=f"{s.name} (also deletes its test cases)")
     db.delete(s)
     db.commit()

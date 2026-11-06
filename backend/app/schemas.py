@@ -14,6 +14,10 @@ class ProjectOut(BaseModel):
     name: str
     description: str
     created_at: datetime
+    model_count: int = 0
+    suite_count: int = 0
+    case_count: int = 0
+    run_count: int = 0
 
 
 class ModelConfigIn(BaseModel):
@@ -87,3 +91,34 @@ class CaseOut(BaseModel):
     severity: str
     evaluation_criteria: str
     created_at: datetime
+
+
+class ProjectUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+
+
+class ModelConfigUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    model_id: str | None = Field(default=None, min_length=1, max_length=200)
+    base_url: str | None = None
+    api_key_env: str | None = None
+    enabled: bool | None = None
+
+
+class CaseUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=300)
+    category: str | None = None
+    prompt: str | None = Field(default=None, min_length=1)
+    reference_answer: str | None = None
+    expected_keywords: list[str] | None = None
+    source_docs: list[str] | None = None
+    expected_schema: dict | None = None
+    expected_behavior: str | None = None
+    severity: str | None = Field(default=None, pattern="^(low|medium|high|critical)$")
+    evaluation_criteria: str | None = None
+
+
+class SuiteUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None

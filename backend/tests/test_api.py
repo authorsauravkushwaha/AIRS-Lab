@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 from fastapi.testclient import TestClient
 
+os.environ["AEGIS_REPORT_DIR"] = "/tmp/aegis_test_reports"
 os.environ["AEGIS_DATABASE_URL"] = "sqlite:////tmp/aegis_test.db"
 if os.path.exists("/tmp/aegis_test.db"):
     os.remove("/tmp/aegis_test.db")
