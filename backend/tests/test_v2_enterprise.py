@@ -12,10 +12,11 @@ if str(REPO_ROOT) not in sys.path:
 import pytest
 from fastapi.testclient import TestClient
 
-os.environ["AEGIS_REPORT_DIR"] = "/tmp/aegis_v2_reports"
-os.environ["AEGIS_DATABASE_URL"] = "sqlite:////tmp/aegis_test_v2.db"
-if os.path.exists("/tmp/aegis_test_v2.db"):
-    os.remove("/tmp/aegis_test_v2.db")
+from platform_paths import TEMP_DIR, database_url, reset_database
+
+os.environ["AEGIS_REPORT_DIR"] = str(TEMP_DIR / "v2_reports")
+os.environ["AEGIS_DATABASE_URL"] = database_url("v2.db")
+reset_database("v2.db")
 
 from app.db import SessionLocal  # noqa: E402
 from app.main import app  # noqa: E402

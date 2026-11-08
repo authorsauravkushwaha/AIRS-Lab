@@ -82,7 +82,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
     prev_rep_env = os.environ.get("AEGIS_REPORT_DIR")
     with tempfile.TemporaryDirectory() as tmpdir:
         db_file = Path(tmpdir) / "cli_gate.db"
-        os.environ["AEGIS_DATABASE_URL"] = f"sqlite:///{db_file}"
+        os.environ["AEGIS_DATABASE_URL"] = f"sqlite:///{db_file.as_posix()}"
         os.environ["AEGIS_REPORT_DIR"] = str(Path(tmpdir) / "reports")
 
         from sqlalchemy import create_engine
@@ -95,7 +95,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
         from app.routers.suites import InstallPackIn, install_template
         from app.services.runner import execute_reliability_run, execute_security_run
 
-        eng = create_engine(f"sqlite:///{db_file}", connect_args={"check_same_thread": False})
+        eng = create_engine(f"sqlite:///{db_file.as_posix()}", connect_args={"check_same_thread": False})
         Base.metadata.create_all(bind=eng)
         Session = sessionmaker(bind=eng, autoflush=False, autocommit=False)
         db = Session()
