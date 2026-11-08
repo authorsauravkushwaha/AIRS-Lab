@@ -185,6 +185,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             return 0 if verdict_out["last_verdict"] == "approved" else 1
         finally:
             db.close()
+            eng.dispose()
             if prev_db_env is None:
                 os.environ.pop("AEGIS_DATABASE_URL", None)
             else:
