@@ -172,7 +172,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             print("=" * 76)
 
             if args.json_out:
-                Path(args.json_out).write_text(json.dumps(cert, indent=2))
+                Path(args.json_out).write_text(json.dumps(cert, indent=2), encoding="utf-8")
             if args.bundle_out:
                 rep = create_report(
                     ReportRequest(project_id=proj.id, run_id=rel_run.id, format="bundle", title=f"CI Gate — {args.pack}"),

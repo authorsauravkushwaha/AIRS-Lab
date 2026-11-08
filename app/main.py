@@ -19,7 +19,7 @@ from app.evaluation import grade, demo_response, wilson
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data/cases.json'
-CASES = json.loads(DATA.read_text())
+CASES = json.loads(DATA.read_text(encoding='utf-8'))
 DATA_HASH = hashlib.sha256(DATA.read_bytes()).hexdigest()[:12]
 MODELS = ['atlas-baseline', 'atlas-guarded', 'orion-small']
 app = FastAPI(title='AIRS Lab', version='1.0.0')
