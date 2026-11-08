@@ -1,22 +1,33 @@
-"""AEGIS AI LAB — FastAPI application entrypoint.
+"""AEGIS AI LAB v2.0 — FastAPI application entrypoint.
 
 Serves the JSON API under /api/* and, when a built frontend is present
 (`frontend/dist`, or $AEGIS_STATIC_DIR), the single-page app at / — one
-origin, no proxy required. In dev you can still run Vite on :5173 with its
-/api proxy to this service on :8000.
+origin, no proxy required.
 """
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.db import SessionLocal, init_db
-from app.routers import analytics, cases, evaluations, models, projects, reports, security, suites, system
+from app.routers import (
+    analytics,
+    cases,
+    evaluations,
+    gates,
+    models,
+    projects,
+    reports,
+    security,
+    suites,
+    system,
+    traces,
+)
 
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = Path(os.environ.get("AEGIS_STATIC_DIR", REPO_ROOT / "frontend" / "dist"))
@@ -34,11 +45,18 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AEGIS AI LAB", version=VERSION, lifespan=lifespan,
-              description="AI reliability, evaluation and security testing platform.")
+app = FastAPI(
+    title="AEGIS AI LAB",
+    version=VERSION,
+    lifespan=lifespan,
+    description="Enterprise AI reliability, adversarial security, inference arbitrage, and governance laboratory.",
+)
 
-cors_origins = [o.strip() for o in os.environ.get(
-    "AEGIS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if o.strip()]
+cors_origins = [
+    o.strip()
+    for o in os.environ.get("AEGIS_CORS_ORIGINS", "*").split(",")
+    if o.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,9 +65,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for router in (projects.router, models.router, suites.router, cases.router,
-               evaluations.router, security.router, analytics.router,
-               reports.router, system.router):
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "same-origin"
+    return response
+
+
+for router in (
+    projects.router,
+    models.router,
+    suites.router,
+    cases.router,
+    evaluations.router,
+    security.router,
+    analytics.router,
+    reports.router,
+    gates.router,
+    traces.router,
+    system.router,
+):
     app.include_router(router)
 
 
@@ -67,7 +104,6 @@ if STATIC_DIR.is_dir():
         if full_path == "api" or full_path.startswith("api/"):
             raise HTTPException(404, "Not found")
         candidate = (STATIC_DIR / full_path).resolve()
-        # Path traversal guard: resolved path must stay inside STATIC_DIR.
         if candidate.is_file() and STATIC_DIR.resolve() in candidate.parents:
             return FileResponse(candidate)
         return FileResponse(index_html, media_type="text/html")

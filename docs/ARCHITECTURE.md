@@ -1,36 +1,34 @@
-# AEGIS AI LAB — Architecture
+# AEGIS AI LAB v2.0 — Architecture
 
 ## Overview
-Three tiers: React + TypeScript + Vite + Tailwind frontend → FastAPI + Pydantic + SQLAlchemy backend → SQLite (dev/local-first) or PostgreSQL (scale-out).
-LLM access goes through a provider adapter (mock / OpenAI-compatible / Ollama) so evaluation logic is provider-independent.
-All evaluation results are stored as database rows; reports and comparisons are reproducible from stored evidence — exports never re-execute anything.
-The backend also serves the built SPA at `/` (single-origin) when `frontend/dist` exists or `AEGIS_STATIC_DIR` is set; otherwise the API runs API-only and Vite proxies `/api` in dev.
+Three tiers served from a single origin:
+1. **React 18 + TypeScript + Vite + Tailwind SPA** (`frontend/`)
+2. **FastAPI + Pydantic v2 + SQLAlchemy 2.0 + JSON Schema Draft 2020-12 Engine** (`backend/app/`)
+3. **SQLite (local/CI) or PostgreSQL (scale-out)** with idempotent schema auto-migration (`backend/app/db.py`) + **CLI Release Gate** (`airs_cli.py`).
 
-## Folder structure
-- `backend/app/` — `main.py` (app + SPA fallback), `config.py`, `db.py`, `models.py`, `schemas.py`, `seed.py` (first-run seed executes the real pipeline)
-  - `routers/` — projects, models, suites, cases, evaluations, security, analytics, reports, `system` (runtime config, audit, clear history)
-  - `services/` — `evaluation_engine.py` (rule-based graders), `security_lab.py` (defensive fixtures), `runner.py` (shared execution path), `audit.py`
-  - `providers/` — `base.py`, `mock.py` (deterministic profiles: guarded / baseline / small), `openai_compat.py`, `ollama.py`
-- `frontend/src/`
-  - `layout/AppShell.tsx` — sidebar (grouped nav), top bar, ⌘K command palette, system status
-  - `pages/` — Overview, Projects, Model Management, Test Suites, Test Cases, Run Evaluations, Reliability Lab, Security Lab, Model Comparison, Reports, Settings, 404
-  - `components/` — `ui.tsx` design system (buttons, cards, badges, fields, modal, ring), `Toast.tsx`, `CommandPalette.tsx`
-- Tests: `backend/tests/` (pytest, incl. HTTP journey + system endpoints), `frontend/tests/` (vitest), `e2e/` (Playwright)
-
-## Database entities
-Project (cascades everything it owns), ModelConfig (stores env-var *name* for API keys, never values),
-TestSuite (cascades cases), TestCase, EvaluationRun (cascades results/findings),
-EvaluationResult (PASS/FAIL/UNCERTAIN/ERROR/NOT RUN), SecurityFinding, Report, AuditEvent (append-only activity log).
-
-## First-run seed
-On a fresh database the seeder creates a demo workspace (3 mock models with distinct behavioral profiles, 1 suite, 8 synthetic cases),
-then **executes the real evaluation engine and security suite** — estimates you see on the Overview dashboard are genuine engine outputs over the mock provider, not hand-written fixtures. Seeding is idempotent: it runs only when the database is empty.
-
-## Milestones — all complete
-1. ✅ Foundation  2. ✅ Core management  3. ✅ Evaluation engine  4. ✅ Security lab  5. ✅ Dashboard & analytics  6. ✅ Reports  7. ✅ QA & docs
-
-## Known boundaries (honest by design)
-- Single-user local tool: no auth/roles, no rate limits, no job queue; live runs are sequential.
-- UNCERTAIN results are evidence, never laundered into pass/fail.
-- Rule-based graders are explainable but shallow — semantic grading and adversarial suites are future work.
-- Mock fixtures demonstrate plumbing, not model quality; connect a live provider for real evidence.
+## Key Subsystems (`backend/app/`)
+- **`providers/`** — Vendor-neutral adapters:
+  - `mock.py` — Deterministic behavioral & pricing profiles (`frontier`, `guarded`, `baseline`, `small`)
+  - `openai_compat.py` — OpenAI, vLLM, SGLang, Azure, Together, Groq (with exponential backoff & tool-call parsing)
+  - `anthropic.py` — Native Anthropic `/v1/messages` adapter
+  - `ollama.py` — Self-hosted / air-gapped Ollama adapter
+  - `webhook.py` — End-to-end HTTP RAG / Agent microservice evaluator
+- **`services/evaluation_engine.py`** — Explainable deterministic & statistical graders:
+  - Contradiction-aware factual verification (`contradiction-detected`)
+  - Atomic sentence & numeric claim groundedness (`groundedness-claim-verification`)
+  - Calibrated abstention vs invented-statistic hallucination detection
+  - Full `jsonschema` Draft 2020-12 validation (`json-schema-2020-12`)
+  - Live `tool_use` allowlist, forbidden-tool, and argument-schema verification
+  - `pass@k` and `pass^k` (`(p)^k`) multi-trial consistency metrics
+  - Wilson 95% confidence intervals & exact paired McNemar significance testing
+- **`services/security_lab.py`** — Adversarial & defensive probes mapped to **OWASP LLM Top 10 (2025)**, **MITRE ATLAS**, and **CWE**:
+  - Direct, indirect, and Base64 / Hex / ROT13 / character-spaced secret exfiltration detection
+  - Cloud IAM (`AKIA`), JWT, Private Key, SSN, and Luhn Credit Card DLP scanning
+  - Verbatim sentinel system-prompt extraction probes
+  - Live agent wire-transfer tool-hijacking probes + policy gate verification
+  - XSS, Cloud Metadata SSRF (`169.254.169.254`), destructive shell/SQL, and Unicode Tag (`U+E0000`) smuggling scans
+- **`services/pricing.py`** — Versioned token pricing ledger + Annualized Inference Arbitrage & Cost-per-Verified-Pass (CPPT) calculator.
+- **`services/redaction.py`** — Server-side DLP scrubber applied automatically before production traces hit disk.
+- **`services/audit.py`** — Tamper-evident sequential SHA-256 hash-chained ledger (`GENESIS -> entry_hash`) with live `/api/system/audit/verify` verification.
+- **`services/domain_packs.py`** — Canonical SHA-256 suite fingerprinting + 1-click industry packs (`quant_finance_10k`, `family_office_exec`, `clinical_safety`, `fintech_support_gate`).
+- **`routers/gates.py` & `airs_cli.py`** — Automated pre-deployment Release Gates issuing SHA-256 deployment certificates (`APPROVED` / `BLOCKED`) and offline-verifiable `.airsbundle.zip` archives.

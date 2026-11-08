@@ -12,5 +12,6 @@ frontend/dist/
 .env
 *.db
 aegis.db
+*.airsbundle.zip
 __pycache__/
 .pytest_cache/

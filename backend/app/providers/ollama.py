@@ -1,4 +1,4 @@
-"""Optional local Ollama provider."""
+"""Local Ollama provider with temperature & token-limit pass-through."""
 import time
 
 import httpx
@@ -15,13 +15,23 @@ class OllamaProvider(BaseProvider):
         self.config = config
         self._base = (config.base_url or settings.ollama_base_url).rstrip("/")
 
-    def generate(self, prompt: str, system: str = "") -> ModelResponse:
+    def generate(self, prompt: str, system: str = "", tools: list[dict] | None = None) -> ModelResponse:
+        eff_sys = system or (self.config.system_prompt or "")
         start = time.perf_counter()
         try:
             with httpx.Client(timeout=120) as client:
                 r = client.post(
                     f"{self._base}/api/generate",
-                    json={"model": self.config.model_id, "prompt": prompt, "system": system, "stream": False},
+                    json={
+                        "model": self.config.model_id,
+                        "prompt": prompt,
+                        "system": eff_sys,
+                        "stream": False,
+                        "options": {
+                            "temperature": self.config.temperature if self.config.temperature is not None else 0.0,
+                            "num_predict": self.config.max_tokens or 1024,
+                        },
+                    },
                 )
                 r.raise_for_status()
                 data = r.json()

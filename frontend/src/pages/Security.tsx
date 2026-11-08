@@ -16,6 +16,7 @@ export default function Security() {
   const [findings, setFindings] = useState<Finding[]>([])
   const [severity, setSeverity] = useState<(typeof SEVERITIES)[number]>('all')
   const [outcome, setOutcome] = useState<(typeof OUTCOMES)[number]>('all')
+  const [owaspFilter, setOwaspFilter] = useState('all')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -41,11 +42,11 @@ export default function Security() {
     setBusy(true)
     setError('')
     try {
-      const res = await api<{ run_id: string; findings: number; by_severity: Record<string, number> }>('/api/security/run', {
+      const res = await api<{ run_id: string; findings: number; failures: number }>('/api/security/run', {
         method: 'POST',
         body: JSON.stringify({ project_id: model.project_id, model_id: model.id }),
       })
-      toast.success('Security suite complete', `${res.findings} findings recorded for ${model.name}.`)
+      toast.success('Security suite complete', `${res.findings} checks (${res.failures} failures) mapped to OWASP & MITRE ATLAS.`)
       loadFindings()
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -56,38 +57,51 @@ export default function Security() {
     }
   }
 
+  const owaspTags = useMemo(() => {
+    const set = new Set<string>()
+    findings.forEach((f) => { if (f.owasp_id) set.add(f.owasp_id) })
+    return ['all', ...Array.from(set).sort()]
+  }, [findings])
+
   const filtered = useMemo(() => findings.filter((f) =>
-    (severity === 'all' || f.severity === severity) && (outcome === 'all' || f.outcome === outcome)
-  ), [findings, severity, outcome])
+    (severity === 'all' || f.severity === severity) &&
+    (outcome === 'all' || f.outcome === outcome) &&
+    (owaspFilter === 'all' || f.owasp_id === owaspFilter)
+  ), [findings, severity, outcome, owaspFilter])
 
   const failCount = findings.filter((f) => f.outcome === 'fail').length
 
   return (
     <div>
       <PageHeader
-        eyebrow="Evidence labs"
-        title="Security Lab"
-        description="Defensive testing with synthetic fixtures only — injection resistance, secret-leakage probes, tool-policy simulation and output validation."
+        eyebrow="Evidence & governance"
+        title="Security Lab (OWASP LLM Top 10 & MITRE ATLAS)"
+        description="Adversarial & defensive probes: Base64/Hex/ROT13 exfiltration, indirect document injection, cloud IAM/PII DLP, system-prompt extraction, live tool-hijack, and XSS/SSRF/Unicode smuggling."
       />
 
       <div className="mb-4 flex items-start gap-3 rounded-xl border border-brand-400/15 bg-brand-grad-soft px-4 py-3 text-[12px] leading-relaxed text-brand-200/90">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <p><span className="font-semibold text-brand-200">Synthetic fixtures by design.</span> All markers (<code className="font-mono text-[10.5px]">SYNTHETIC_SECRET_*</code>) are inert placeholders — never real credentials. Tool calls are simulated against a policy allowlist and are never executed.</p>
+        <p><span className="font-semibold text-brand-200">Safe inert markers + taxonomy mapping.</span> Every finding carries OWASP LLM Top 10 (2025), MITRE ATLAS, and CWE identifiers ready for CISO/SOC export. Tool calls are inspected against allowlists — never executed.</p>
       </div>
       {error && <div className="mb-4"><ErrorMsg text={error} onRetry={loadFindings} /></div>}
 
-      {/* Runner + summary strip */}
       <div className="grid gap-4 xl:grid-cols-5">
-        <Card title="Run defensive suite" icon={<ShieldCheck className="h-3.5 w-3.5" />} className="xl:col-span-2">
+        <Card title="Run adversarial & defensive suite" icon={<ShieldCheck className="h-3.5 w-3.5" />} className="xl:col-span-2">
           <div className="space-y-4">
             <Select value={modelId} onChange={(e) => setModelId(e.target.value)} aria-label="Model to test">
               {models.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.provider}</option>)}
             </Select>
             <Button className="w-full" loading={busy} disabled={!modelId || busy} onClick={run}>
-              <Play className="h-4 w-4" /> {busy ? 'Running security tests…' : 'Run security tests'}
+              <Play className="h-4 w-4" /> {busy ? 'Running security tests…' : 'Run security suite'}
             </Button>
             <ul className="space-y-1.5 text-[11.5px] text-mute">
-              {['Document-embedded injection overrides', 'Fake system-message injection', 'Conflicting instruction hierarchy', 'Secret leakage probes', 'Tool-call allowlist + schema + approval gate', 'Output validation (script/shell markers)'].map((t) => (
+              {[
+                'LLM01: Document override & Base64/ROT13 exfiltration',
+                'LLM02: Cloud IAM (AKIA), SSN, Credit Card & Secret DLP',
+                'LLM05: XSS, Cloud Metadata SSRF (169.254.169.254) & Unicode tags',
+                'LLM06: Live agent wire-transfer tool hijack & policy gates',
+                'LLM07: Verbatim sentinel system-prompt extraction',
+              ].map((t) => (
                 <li key={t} className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-brand-400" />{t}</li>
               ))}
             </ul>
@@ -108,14 +122,16 @@ export default function Security() {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-[11px] leading-relaxed text-mute">A pass here means the fixture resisted — it is not a certification of the model. Review every finding below; failures include concrete mitigations.</p>
+          <p className="mt-4 text-[11px] leading-relaxed text-mute">Passing probes prove resistance against tested attack classes — pair with automated Release Gates (/gates) to block regressions in CI/CD.</p>
         </Card>
       </div>
 
-      {/* Filters + findings */}
       <Card pad={false} className="mt-4" title={`Findings — ${filtered.length} of ${findings.length}`} icon={<ShieldAlert className="h-3.5 w-3.5" />}
             action={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={owaspFilter} onChange={(e) => setOwaspFilter(e.target.value)} className="w-auto" aria-label="Filter OWASP">
+                  {owaspTags.map((t) => <option key={t} value={t}>{t === 'all' ? 'All OWASP categories' : t}</option>)}
+                </Select>
                 <Select value={severity} onChange={(e) => setSeverity(e.target.value as typeof severity)} className="w-auto" aria-label="Filter severity">
                   {SEVERITIES.map((s) => <option key={s} value={s}>{s === 'all' ? 'All severities' : s}</option>)}
                 </Select>
@@ -130,8 +146,8 @@ export default function Security() {
           <EmptyState
             icon={<ShieldCheck className="h-6 w-6" />}
             title={findings.length === 0 ? 'No findings recorded yet' : 'Nothing matches these filters'}
-            hint={findings.length === 0 ? 'Run the defensive suite to populate this view with synthetic-fixture evidence.' : 'Loosen the severity or outcome filters above.'}
-            action={findings.length === 0 ? <Button onClick={run} disabled={busy || !modelId}><Play className="h-4 w-4" /> Run security tests</Button> : undefined}
+            hint={findings.length === 0 ? 'Run the suite to populate OWASP & MITRE ATLAS evidence.' : 'Loosen the OWASP, severity, or outcome filters above.'}
+            action={findings.length === 0 ? <Button onClick={run} disabled={busy || !modelId}><Play className="h-4 w-4" /> Run security suite</Button> : undefined}
           />
         ) : (
           <ul className="divide-y divide-line">
@@ -143,7 +159,13 @@ export default function Security() {
                     <StatusBadge status={f.severity} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-medium text-slate-100">{f.test_name}</span>
-                      <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.18em] text-mute-dim">{f.category.replace(/_/g, ' ')} · {fmtDateTime(f.created_at)}</span>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-[9px] uppercase tracking-[0.16em] text-mute-dim">
+                        <span>{f.category.replace(/_/g, ' ')}</span>
+                        {f.owasp_id && <span className="rounded border border-brand-400/25 bg-brand-grad-soft px-1.5 py-0.5 text-brand-200">{f.owasp_id}</span>}
+                        {f.mitre_atlas_id && <span className="rounded border border-line bg-ink-800 px-1.5 py-0.5 text-slate-300">{f.mitre_atlas_id}</span>}
+                        {f.cwe_id && <span>{f.cwe_id}</span>}
+                        <span>· {fmtDateTime(f.created_at)}</span>
+                      </span>
                     </span>
                     <StatusBadge status={f.outcome} />
                     <ChevronDown className={`h-4 w-4 shrink-0 text-mute-dim transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -168,7 +190,7 @@ export default function Security() {
                           </div>
                           {f.mitigation && (
                             <div className="rounded-xl border border-brand-400/15 bg-brand-grad-soft p-3">
-                              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-brand-300">Mitigation</p>
+                              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-brand-300">Engineering Mitigation</p>
                               <p className="mt-1 text-brand-100/90">{f.mitigation}</p>
                             </div>
                           )}

@@ -9,19 +9,23 @@ import { Button, Card, EmptyState, ErrorMsg, Field, Input, Modal, PageHeader, Se
 import { useToast } from '../components/Toast'
 import { fmtCategory } from '../lib/format'
 
-const CATEGORIES = ['factual_accuracy', 'groundedness', 'hallucination', 'structured_output', 'consistency', 'refusal', 'security_injection', 'general']
+const CATEGORIES = [
+  'factual_accuracy', 'groundedness', 'hallucination', 'structured_output',
+  'tool_use', 'consistency', 'refusal', 'security_injection', 'general',
+]
 const SEVERITIES = ['low', 'medium', 'high', 'critical']
 
 interface CaseForm {
   id?: string
   suite_id: string; name: string; category: string; prompt: string
   reference_answer: string; expected_keywords: string; source_docs: string
-  expected_schema: string; expected_behavior: string; severity: string; evaluation_criteria: string
+  expected_schema: string; tools_config: string
+  expected_behavior: string; severity: string; evaluation_criteria: string
 }
 const emptyForm = (suiteId: string): CaseForm => ({
   suite_id: suiteId, name: '', category: 'factual_accuracy', prompt: '',
   reference_answer: '', expected_keywords: '', source_docs: '', expected_schema: '',
-  expected_behavior: '', severity: 'medium', evaluation_criteria: '',
+  tools_config: '', expected_behavior: '', severity: 'medium', evaluation_criteria: '',
 })
 
 export default function Cases() {
@@ -67,6 +71,7 @@ export default function Cases() {
     expected_keywords: c.expected_keywords.join(', '),
     source_docs: c.source_docs.join('\n'),
     expected_schema: c.expected_schema ? JSON.stringify(c.expected_schema, null, 2) : '',
+    tools_config: c.tools_config ? JSON.stringify(c.tools_config, null, 2) : '',
     expected_behavior: c.expected_behavior, severity: c.severity, evaluation_criteria: c.evaluation_criteria,
   })
 
@@ -77,7 +82,16 @@ export default function Cases() {
       try {
         expected_schema = JSON.parse(form.expected_schema)
       } catch {
-        toast.error('Invalid JSON schema', 'Expected-schema must be valid JSON (or left empty).')
+        toast.error('Invalid JSON schema', 'Expected-schema must be valid JSON.')
+        return
+      }
+    }
+    let tools_config: unknown = null
+    if (form.tools_config.trim()) {
+      try {
+        tools_config = JSON.parse(form.tools_config)
+      } catch {
+        toast.error('Invalid tools_config JSON', 'Tool policy configuration must be valid JSON.')
         return
       }
     }
@@ -90,6 +104,7 @@ export default function Cases() {
       expected_keywords: form.expected_keywords.split(',').map((k) => k.trim()).filter(Boolean),
       source_docs: form.source_docs.split('\n').map((d) => d.trim()).filter(Boolean),
       expected_schema,
+      tools_config,
       expected_behavior: form.expected_behavior,
       severity: form.severity,
       evaluation_criteria: form.evaluation_criteria,
@@ -163,17 +178,16 @@ export default function Cases() {
       <PageHeader
         eyebrow="Test engineering"
         title="Test Cases"
-        description="Atomic checks with explicit oracles: reference answers, keyword rubrics, JSON schemas and behavioral expectations."
+        description="Atomic checks with explicit oracles: contradiction-aware references, Draft 2020-12 JSON schemas, tool-policy rules, and source grounding."
         actions={<>
-          <input ref={fileRef} type="file" accept=".json,.jsonl,application/json" className="hidden" onChange={(e) => importCases(e.target.files?.[0])} aria-hidden="true" />
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><FileUp className="h-4 w-4" /> Import</Button>
+          <input ref={fileRef} type="file" accept=".json,.jsonl,.yaml,.yml,application/json" className="hidden" onChange={(e) => importCases(e.target.files?.[0])} aria-hidden="true" />
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><FileUp className="h-4 w-4" /> Import JSON/YAML</Button>
           <Button variant="outline" size="sm" onClick={exportCases} disabled={cases.length === 0}><Download className="h-4 w-4" /> Export</Button>
           <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4" /> New case</Button>
         </>}
       />
       {error && <div className="mb-4"><ErrorMsg text={error} onRetry={load} /></div>}
 
-      {/* Filters */}
       <Card pad={false} className="mb-4 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <SlidersHorizontal className="ml-1 h-4 w-4 text-mute-dim" />
@@ -197,7 +211,6 @@ export default function Cases() {
         </div>
       </Card>
 
-      {/* Case list */}
       {filtered.length === 0 ? (
         <Card>
           <EmptyState
@@ -245,7 +258,10 @@ export default function Cases() {
                             <dd className="mt-1 flex flex-wrap gap-1.5">{c.expected_keywords.map((k) => <code key={k} className="rounded border border-line bg-ink-800 px-1.5 py-0.5 font-mono text-[10.5px] text-brand-200">{k}</code>)}</dd></div>
                         )}
                         {c.expected_schema && (
-                          <div className="sm:col-span-2"><dt className="font-mono text-[9px] uppercase tracking-[0.2em] text-mute-dim">Expected schema</dt><dd><pre className="mt-1 overflow-x-auto rounded-lg border border-line bg-ink-900 p-3 font-mono text-[10.5px] leading-relaxed text-slate-300">{JSON.stringify(c.expected_schema, null, 2)}</pre></dd></div>
+                          <div className="sm:col-span-2"><dt className="font-mono text-[9px] uppercase tracking-[0.2em] text-mute-dim">Expected Draft 2020-12 JSON schema</dt><dd><pre className="mt-1 overflow-x-auto rounded-lg border border-line bg-ink-900 p-3 font-mono text-[10.5px] leading-relaxed text-slate-300">{JSON.stringify(c.expected_schema, null, 2)}</pre></dd></div>
+                        )}
+                        {c.tools_config && (
+                          <div className="sm:col-span-2"><dt className="font-mono text-[9px] uppercase tracking-[0.2em] text-mute-dim">Tool-use policy & schema</dt><dd><pre className="mt-1 overflow-x-auto rounded-lg border border-line bg-ink-900 p-3 font-mono text-[10.5px] leading-relaxed text-brand-200">{JSON.stringify(c.tools_config, null, 2)}</pre></dd></div>
                         )}
                         {c.expected_behavior && (
                           <div className="sm:col-span-2"><dt className="font-mono text-[9px] uppercase tracking-[0.2em] text-mute-dim">Expected behavior</dt><dd className="mt-1 text-slate-200">{c.expected_behavior}</dd></div>
@@ -270,7 +286,6 @@ export default function Cases() {
         </Card>
       )}
 
-      {/* Create / edit modal */}
       <Modal
         open={form !== null}
         onClose={() => setForm(null)}
@@ -289,7 +304,7 @@ export default function Cases() {
               </Select>
             </Field>
             <Field label="Name">
-              <Input autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Capital of France (factual)" />
+              <Input autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Basis-point operating margin delta" />
             </Field>
             <Field label="Category">
               <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
@@ -306,20 +321,25 @@ export default function Cases() {
                 <Textarea rows={2} value={form.prompt} onChange={(e) => setForm({ ...form, prompt: e.target.value })} placeholder="The exact prompt sent to the model under test…" />
               </Field>
             </div>
-            <Field label="Reference answer" hint="Optional oracle">
-              <Input value={form.reference_answer} onChange={(e) => setForm({ ...form, reference_answer: e.target.value })} placeholder="Paris" />
+            <Field label="Reference answer" hint="Contradiction-aware oracle">
+              <Input value={form.reference_answer} onChange={(e) => setForm({ ...form, reference_answer: e.target.value })} placeholder="125 bps" />
             </Field>
             <Field label="Expected keywords" hint="Comma-separated">
-              <Input value={form.expected_keywords} onChange={(e) => setForm({ ...form, expected_keywords: e.target.value })} placeholder="Paris, capital" />
+              <Input value={form.expected_keywords} onChange={(e) => setForm({ ...form, expected_keywords: e.target.value })} placeholder="125, bps" />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="Source documents" hint="One per line — used by groundedness/hallucination checks">
-                <Textarea rows={2} value={form.source_docs} onChange={(e) => setForm({ ...form, source_docs: e.target.value })} placeholder="Shipping notice: parcel ORD-991, ETA Friday…" />
+              <Field label="Source documents" hint="One per line — used by groundedness & hallucination abstention checks">
+                <Textarea rows={2} value={form.source_docs} onChange={(e) => setForm({ ...form, source_docs: e.target.value })} placeholder="Footnote 9: Net Debt-to-EBITDA below 3.50x…" />
               </Field>
             </div>
             <div className="sm:col-span-2">
-              <Field label="Expected JSON schema" hint="Optional — enables the structured-output grader">
-                <Textarea rows={3} className="font-mono text-[11px]" value={form.expected_schema} onChange={(e) => setForm({ ...form, expected_schema: e.target.value })} placeholder='{"type": "object", "required": ["name"], …}' spellCheck={false} />
+              <Field label="Expected JSON Schema (Draft 2020-12)" hint="Optional — validates types, bounds & additionalProperties">
+                <Textarea rows={3} className="font-mono text-[11px]" value={form.expected_schema} onChange={(e) => setForm({ ...form, expected_schema: e.target.value })} placeholder='{"type": "object", "required": ["ticker"], "additionalProperties": false}' spellCheck={false} />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Tool Policy Config (for tool_use category)" hint="Optional — allowlist, forbidden_tools, expected_tool & expected_args_schema">
+                <Textarea rows={3} className="font-mono text-[11px]" value={form.tools_config} onChange={(e) => setForm({ ...form, tools_config: e.target.value })} placeholder='{"allowed_tools": ["get_order_status"], "expected_tool": "get_order_status", "forbidden_tools": ["initiate_wire_transfer"]}' spellCheck={false} />
               </Field>
             </div>
             <Field label="Expected behavior" hint="For refusal/injection cases">
@@ -332,7 +352,6 @@ export default function Cases() {
         )}
       </Modal>
 
-      {/* Delete confirm */}
       <Modal
         open={confirmDelete !== null}
         onClose={() => setConfirmDelete(null)}

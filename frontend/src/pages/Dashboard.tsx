@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, ArrowUpRight, Coins, FlaskConical, Layers, Play, ShieldCheck, TestTube2, Timer,
+  ArrowRight, ArrowUpRight, BadgeCheck, Coins, FlaskConical, Layers, Lock, Play, ShieldCheck, TestTube2, Timer,
 } from 'lucide-react'
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -53,6 +53,7 @@ export default function Dashboard() {
   const severity = Object.entries(data.security_by_severity).map(([severity, count]) => ({ severity, count }))
   const severityTotal = severity.reduce((a, s) => a + s.count, 0)
   const passTone = data.pass_rate === null ? 'brand' : data.pass_rate >= 75 ? 'emerald' : data.pass_rate >= 50 ? 'amber' : 'rose'
+  const ci = data.wilson_95_ci
 
   return (
     <div className="space-y-5">
@@ -62,43 +63,59 @@ export default function Dashboard() {
         <div aria-hidden="true" className="absolute -left-20 bottom-[-6rem] h-64 w-64 rounded-full bg-brand-600/10 blur-3xl" />
         <div className="relative flex flex-wrap items-center justify-between gap-8">
           <div className="max-w-2xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-400">AEGIS AI LAB · Reliability & Security</p>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-400">AEGIS AI LAB · Flight Recorder & Crash-Test Lab</p>
+              {data.audit_chain_valid !== undefined && (
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+                  data.audit_chain_valid ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300' : 'border-rose-400/35 bg-rose-500/15 text-rose-200'
+                }`}>
+                  <Lock className="h-3 w-3" />
+                  {data.audit_chain_valid ? `SHA-256 Audit Chain Verified (${data.audit_events_verified ?? 0})` : 'Audit Chain Alert'}
+                </span>
+              )}
+            </div>
             <h1 className="mt-3 font-display text-[30px] font-semibold leading-[1.12] tracking-tight text-slate-50 sm:text-4xl">
-              Know where your models stand — <span className="text-brand">before your users find out.</span>
+              Know where your models stand — <span className="text-brand">before capital or reputation is at risk.</span>
             </h1>
             <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-mute">
-              One versioned dataset, deterministic rule-based graders, reproducible evidence.
-              Synthetic fixtures run entirely offline; connect a live provider when you are ready.
+              SHA-256 dataset fingerprints, Draft 2020-12 schema & contradiction checks, OWASP LLM Top 10 / MITRE ATLAS security probes, McNemar paired inference arbitrage, and signed release-gate certificates.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-2.5">
               <Button onClick={() => navigate('/run')} className="group">
                 <Play className="h-4 w-4" /> Run evaluation
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Button>
-              <Button variant="outline" onClick={() => navigate('/security')}>
-                <ShieldCheck className="h-4 w-4" /> Security suite
+              <Button variant="outline" onClick={() => navigate('/gates')}>
+                <BadgeCheck className="h-4 w-4" /> Release gates ({data.approved_gates ?? 0}/{data.total_gates ?? 0})
               </Button>
-              <span className="ml-1 font-mono text-[9px] uppercase tracking-[0.2em] text-mute-dim">Mock fixtures · no API keys</span>
+              <Button variant="subtle" onClick={() => navigate('/suites')}>
+                <Layers className="h-4 w-4" /> Domain packs
+              </Button>
             </div>
           </div>
-          <div className="hidden shrink-0 md:block">
+          <div className="hidden shrink-0 flex-col items-center md:flex">
             <Ring value={data.pass_rate} size={158} stroke={12} label="pass rate" tone={passTone} />
+            {ci && (
+              <span className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.16em] text-mute-dim">
+                95% Wilson CI: {ci[0]}%–{ci[1]}%
+              </span>
+            )}
           </div>
         </div>
       </section>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi icon={<FlaskConical className="h-4 w-4" />} label="Evaluation runs" value={fmtNum(data.total_runs)} sub={`${fmtNum(data.total_reports)} reports generated`} />
-        <Kpi icon={<TestTube2 className="h-4 w-4" />} label="Test cases" value={fmtNum(data.total_test_cases)} sub="Versioned & shared across models" />
-        <Kpi icon={<Timer className="h-4 w-4" />} label="Avg latency" value={data.avg_latency_ms === null ? '—' : `${fmtNum(Math.round(data.avg_latency_ms))} ms`} sub="Per-case, wall-clock" />
-        <Kpi icon={<Coins className="h-4 w-4" />} label="Tokens processed" value={fmtNum(data.total_tokens)} sub="Input + output, all stored runs" />
+        <Kpi icon={<FlaskConical className="h-4 w-4" />} label="Evaluation runs" value={fmtNum(data.total_runs)} sub={`${fmtNum(data.total_reports)} reports · ${fmtNum(data.total_traces ?? 0)} DLP traces`} />
+        <Kpi icon={<TestTube2 className="h-4 w-4" />} label="Test cases" value={fmtNum(data.total_test_cases)} sub="SHA-256 fingerprinted across models" />
+        <Kpi icon={<Timer className="h-4 w-4" />} label="Avg / P95 latency" value={data.avg_latency_ms === null ? '—' : `${fmtNum(Math.round(data.avg_latency_ms))} ms`} sub={data.p95_latency_ms ? `P95: ${Math.round(data.p95_latency_ms)} ms wall-clock` : 'Per-case wall-clock'} />
+        <Kpi icon={<Coins className="h-4 w-4" />} label="Tokens processed" value={fmtNum(data.total_tokens)} sub={data.total_cost_usd ? `Est. spend $${data.total_cost_usd.toFixed(5)}` : 'Input + output, all stored runs'} />
       </div>
 
       {/* Trend + categories */}
       <div className="grid gap-4 lg:grid-cols-5">
         <Card title="Pass-rate trend" icon={<ArrowUpRight className="h-3.5 w-3.5" />} className="lg:col-span-3"
-              action={<Link to="/reliability" className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-300 hover:text-brand-200">Inspect runs ↗</Link>}>
+              action={<Link to="/compare" className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-300 hover:text-brand-200">Arbitrage & Compare ↗</Link>}>
           {trend.length === 0 ? (
             <p className="py-10 text-center text-sm text-mute">No completed runs yet.</p>
           ) : (
@@ -153,7 +170,7 @@ export default function Dashboard() {
       {/* Security severity + recent runs */}
       <div className="grid gap-4 lg:grid-cols-5">
         <Card title="Security findings by severity" icon={<ShieldCheck className="h-3.5 w-3.5" />} className="lg:col-span-2"
-              action={<Link to="/security" className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-300 hover:text-brand-200">Open lab ↗</Link>}>
+              action={<Link to="/security" className="font-mono text-[10px] uppercase tracking-[0.2em] text-brand-300 hover:text-brand-200">OWASP & ATLAS ↗</Link>}>
           <ResponsiveContainer width="100%" height={170}>
             <BarChart data={severity} margin={{ top: 4, right: 4, left: -26, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 6" stroke="rgba(148,184,255,0.07)" vertical={false} />
@@ -169,7 +186,7 @@ export default function Dashboard() {
             </BarChart>
           </ResponsiveContainer>
           <p className="mt-2 text-center font-mono text-[9.5px] uppercase tracking-[0.2em] text-mute-dim">
-            {severityTotal} findings recorded · synthetic fixtures
+            {severityTotal} findings mapped to OWASP LLM Top 10
           </p>
         </Card>
 
@@ -187,7 +204,10 @@ export default function Dashboard() {
                       <span className="text-mute-dim"> · </span>
                       <span className="text-mute">{run.model_name ?? 'Unknown model'}</span>
                     </p>
-                    <p className="mt-0.5 font-mono text-[9.5px] uppercase tracking-wider text-mute-dim">{timeAgo(run.started_at)}</p>
+                    <p className="mt-0.5 font-mono text-[9.5px] uppercase tracking-wider text-mute-dim">
+                      {timeAgo(run.started_at)}
+                      {run.dataset_hash ? ` · sha256:${run.dataset_hash.slice(0, 8)}` : ''}
+                    </p>
                   </div>
                   {typeof run.summary?.pass_rate === 'number' && (
                     <span className="font-display text-sm font-semibold text-slate-100">{(run.summary.pass_rate as number).toFixed(1)}%</span>
