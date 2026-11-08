@@ -2,7 +2,12 @@ name: Tests & Release Gate
 on: [push, pull_request]
 jobs:
   backend-and-cli:
-    runs-on: ubuntu-latest
+    name: Backend & CLI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -10,23 +15,37 @@ jobs:
           python-version: '3.11'
       - run: pip install -r requirements.txt -r backend/requirements.txt
       - name: Legacy & Site Tests
-        run: python -m pytest tests/ -q
+        id: legacy_tests
+        run: python -m pytest tests/ -q --junitxml=pytest-root.xml
+      - name: Report legacy test failures
+        if: failure() && steps.legacy_tests.outcome == 'failure'
+        run: python scripts/annotate_junit.py pytest-root.xml
       - name: AEGIS AI LAB v2.0 Backend & Enterprise Tests
+        id: backend_tests
         working-directory: backend
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q --junitxml=pytest-backend.xml
+      - name: Report backend test failures
+        if: failure() && steps.backend_tests.outcome == 'failure'
+        working-directory: backend
+        run: python ../scripts/annotate_junit.py pytest-backend.xml
       - name: CLI Quant Finance CI Release Gate + Offline Bundle Verification
         run: |
           python -m airs_cli packs
-          python -m airs_cli gate --pack quant_finance_10k --model mock-atlas-guarded --fail-under 85 --security-gate --bundle-out /tmp/ci.airsbundle.zip
-          python -m airs_cli verify-bundle /tmp/ci.airsbundle.zip
+          python -m airs_cli gate --pack quant_finance_10k --model mock-atlas-guarded --fail-under 85 --security-gate --bundle-out ci.airsbundle.zip
+          python -m airs_cli verify-bundle ci.airsbundle.zip
 
   frontend:
-    runs-on: ubuntu-latest
+    name: Frontend (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - working-directory: frontend

@@ -15,16 +15,34 @@ An enterprise-grade, local-first AI reliability, security, inference-arbitrage, 
 
 ---
 
-## Quickstart (Full-Stack Single-Origin Platform)
+## Quickstart (Windows and Linux)
 
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt -r backend/requirements.txt
-cd frontend && npm ci && npm run build && cd ..
-cd backend && ../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+### Requirements
+
+- Python **3.11 or newer**
+- Node.js **22.22.2 or newer** (npm is included)
+- Windows 10/11 with PowerShell, or a current Linux distribution
+
+The setup helper creates a project-local `.venv`, installs the Python packages, installs the frontend dependencies, and builds the web UI. No shell activation or OS-specific path commands are needed.
+
+**Windows (PowerShell):**
+
+```powershell
+py -3.11 scripts/setup_local.py
+py run.py
 ```
 
-Open `http://localhost:8000` (API Swagger docs at `http://localhost:8000/docs`).
+**Linux:**
+
+```bash
+python3 scripts/setup_local.py
+python3 run.py
+```
+
+Open `http://localhost:8000` (API Swagger docs at `http://localhost:8000/docs`). Press **Ctrl+C** in the terminal to stop the server. To bind to another interface or use a different port, run `python run.py --host 0.0.0.0 --port 8000` (use `py run.py ...` on Windows). The app serves the built frontend and API from one local origin. SQLite data and generated reports are kept locally.
+
+To rebuild the frontend after changing its source, run `npm run build` from the `frontend` directory, then restart the server. For optional provider configuration, copy `.env.example` to `.env` in the repository root and add server-side keys there; never commit `.env`.
+
 First launch seeds a labeled demonstration workspace by executing the real evaluation engine, OWASP security suite, release gate, and DLP trace redactor over deterministic mock profiles (`Mock Frontier — Pro`, `Mock Atlas — Guarded`, `Mock Atlas — Baseline`, `Mock Orion — Small`).
 
 ### Connect Live Providers
@@ -40,39 +58,51 @@ Register models in **Model Management** (`/models`) using any supported adapter�
 
 Block pull requests automatically when reliability regresses or any Critical/High security probe fails:
 
+First run `scripts/setup_local.py`, then call the CLI with the virtual-environment interpreter.
+
+**Windows (PowerShell):**
+
+```powershell
+.\.venv\Scripts\python.exe -m airs_cli packs
+.\.venv\Scripts\python.exe -m airs_cli gate --pack quant_finance_10k --provider mock --model mock-atlas-guarded --fail-under 85 --security-gate --bundle-out .\quant_gate.airsbundle.zip
+.\.venv\Scripts\python.exe -m airs_cli verify-bundle .\quant_gate.airsbundle.zip
+```
+
+**Linux:**
+
 ```bash
-# 1. List built-in high-stakes domain vertical suites
-python -m airs_cli packs
-
-# 2. Run Quant Finance 10-K release gate + OWASP security gate & emit signed bundle
-python -m airs_cli gate \
-  --pack quant_finance_10k \
-  --provider mock \
-  --model mock-atlas-guarded \
-  --fail-under 85 \
-  --security-gate \
-  --bundle-out ./quant_gate.airsbundle.zip
-
-# 3. Verify an exported Evidence Bundle offline (tamper detection)
-python -m airs_cli verify-bundle ./quant_gate.airsbundle.zip
+.venv/bin/python -m airs_cli packs
+.venv/bin/python -m airs_cli gate --pack quant_finance_10k --provider mock --model mock-atlas-guarded --fail-under 85 --security-gate --bundle-out ./quant_gate.airsbundle.zip
+.venv/bin/python -m airs_cli verify-bundle ./quant_gate.airsbundle.zip
 ```
 
 ---
 
 ## Run All Automated Tests
 
-```bash
-# Backend API, engine, security lab, DLP, audit hash-chain & CLI gate tests (27 tests)
-cd backend && ../.venv/bin/python -m pytest tests/ -q && cd ..
+After completing setup, run tests with the project-local Python interpreter.
 
-# Frontend React + Vitest suite (5 tests)
-cd frontend && npm test && cd ..
+**Windows (PowerShell):**
 
-# Legacy lightweight prototype & GitHub Pages static site tests (21 tests)
-.venv/bin/python -m pytest tests/ -q
+```powershell
+.venv\Scripts\python.exe -m pytest tests/ -q
+Push-Location backend
+..\.venv\Scripts\python.exe -m pytest tests/ -q
+Pop-Location
+Push-Location frontend
+npm test
+Pop-Location
 ```
 
----
+**Linux:**
+
+```bash
+.venv/bin/python -m pytest tests/ -q
+(cd backend && ../.venv/bin/python -m pytest tests/ -q)
+(cd frontend && npm test)
+```
+
+The automated GitHub Actions test matrix runs backend, CLI, and frontend checks on both Windows and Linux.
 
 ## Honesty & Safety Boundaries
 

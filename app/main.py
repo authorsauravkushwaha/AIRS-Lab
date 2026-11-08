@@ -1,5 +1,6 @@
 """Local-first evaluation service. Run with uvicorn app.main:app."""
 from collections import defaultdict
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -18,18 +19,33 @@ from app.evaluation import grade, demo_response, wilson
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data/cases.json'
-CASES = json.loads(DATA.read_text())
+CASES = json.loads(DATA.read_text(encoding='utf-8'))
 DATA_HASH = hashlib.sha256(DATA.read_bytes()).hexdigest()[:12]
 MODELS = ['atlas-baseline', 'atlas-guarded', 'orion-small']
 app = FastAPI(title='AIRS Lab', version='1.0.0')
 app.mount('/static', StaticFiles(directory=ROOT / 'app/static'), name='static')
 
 
+@contextmanager
 def db():
+    """Yield a SQLite connection and always release its file handle.
+
+    sqlite3.Connection's context manager commits or rolls back, but does not
+    close the connection. Explicitly closing is important on Windows, where an
+    open database file cannot be removed (for example, during temporary builds
+    or test cleanup).
+    """
     conn = sqlite3.connect(os.environ.get('AIRS_DB', str(ROOT / 'airs.sqlite3')))
-    conn.execute('CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, payload TEXT NOT NULL)')
-    conn.execute('CREATE TABLE IF NOT EXISTS feedback (id TEXT PRIMARY KEY, created TEXT, rating INTEGER, comment TEXT)')
-    return conn
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, payload TEXT NOT NULL)')
+        conn.execute('CREATE TABLE IF NOT EXISTS feedback (id TEXT PRIMARY KEY, created TEXT, rating INTEGER, comment TEXT)')
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 class RunRequest(BaseModel):
