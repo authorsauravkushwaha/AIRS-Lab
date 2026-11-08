@@ -18,14 +18,14 @@ jobs:
         id: legacy_tests
         run: python -m pytest tests/ -q --junitxml=pytest-root.xml
       - name: Report legacy test failures
-        if: steps.legacy_tests.outcome == 'failure'
+        if: failure() && steps.legacy_tests.outcome == 'failure'
         run: python scripts/annotate_junit.py pytest-root.xml
       - name: AEGIS AI LAB v2.0 Backend & Enterprise Tests
         id: backend_tests
         working-directory: backend
         run: python -m pytest tests/ -q --junitxml=pytest-backend.xml
       - name: Report backend test failures
-        if: steps.backend_tests.outcome == 'failure'
+        if: failure() && steps.backend_tests.outcome == 'failure'
         working-directory: backend
         run: python ../scripts/annotate_junit.py pytest-backend.xml
       - name: CLI Quant Finance CI Release Gate + Offline Bundle Verification
