@@ -1,4 +1,4 @@
-"""Pydantic request/response schemas."""
+"""Pydantic request/response schemas for AEGIS AI LAB v2.0."""
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -23,10 +23,15 @@ class ProjectOut(BaseModel):
 class ModelConfigIn(BaseModel):
     project_id: str
     name: str = Field(min_length=1, max_length=200)
-    provider: str = Field(pattern="^(mock|openai_compat|ollama)$")
+    provider: str = Field(pattern="^(mock|openai_compat|anthropic|ollama|custom_webhook)$")
     model_id: str = Field(min_length=1, max_length=200)
     base_url: str = ""
     api_key_env: str = ""   # env var NAME only — never a raw key
+    system_prompt: str = ""
+    temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+    max_tokens: int = Field(default=1024, ge=1, le=65536)
+    input_cost_per_1m: float | None = Field(default=None, ge=0.0)
+    output_cost_per_1m: float | None = Field(default=None, ge=0.0)
     enabled: bool = True
 
 
@@ -38,6 +43,14 @@ class ModelConfigOut(BaseModel):
     model_id: str
     base_url: str
     api_key_env: str
+    system_prompt: str = ""
+    temperature: float = 0.0
+    max_tokens: int = 1024
+    input_cost_per_1m: float | None = None
+    output_cost_per_1m: float | None = None
+    effective_input_cost_per_1m: float = 0.0
+    effective_output_cost_per_1m: float = 0.0
+    pricing_source: str = "unpriced"
     enabled: bool
     last_status: str
     created_at: datetime
@@ -48,10 +61,26 @@ class ConnectionTestOut(BaseModel):
     message: str
 
 
+class PlaygroundIn(BaseModel):
+    prompt: str = Field(min_length=1)
+    system_prompt: str | None = None
+
+
+class PlaygroundOut(BaseModel):
+    response: str
+    latency_ms: float
+    ttft_ms: float
+    tokens_in: int
+    tokens_out: int
+    est_cost_usd: float
+    tool_calls: list[dict] = []
+
+
 class SuiteIn(BaseModel):
     project_id: str
     name: str = Field(min_length=1, max_length=200)
     description: str = ""
+    domain_pack: str = ""
 
 
 class SuiteOut(BaseModel):
@@ -59,8 +88,15 @@ class SuiteOut(BaseModel):
     project_id: str
     name: str
     description: str
+    domain_pack: str = ""
+    dataset_hash: str = ""
     case_count: int = 0
     created_at: datetime
+
+
+class InstallPackIn(BaseModel):
+    project_id: str
+    pack_id: str
 
 
 class CaseIn(BaseModel):
@@ -72,6 +108,7 @@ class CaseIn(BaseModel):
     expected_keywords: list[str] = []
     source_docs: list[str] = []
     expected_schema: dict | None = None
+    tools_config: dict | None = None
     expected_behavior: str = ""
     severity: str = Field(default="medium", pattern="^(low|medium|high|critical)$")
     evaluation_criteria: str = ""
@@ -87,6 +124,7 @@ class CaseOut(BaseModel):
     expected_keywords: list[str]
     source_docs: list[str]
     expected_schema: dict | None
+    tools_config: dict | None = None
     expected_behavior: str
     severity: str
     evaluation_criteria: str
@@ -103,6 +141,11 @@ class ModelConfigUpdate(BaseModel):
     model_id: str | None = Field(default=None, min_length=1, max_length=200)
     base_url: str | None = None
     api_key_env: str | None = None
+    system_prompt: str | None = None
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    max_tokens: int | None = Field(default=None, ge=1, le=65536)
+    input_cost_per_1m: float | None = Field(default=None, ge=0.0)
+    output_cost_per_1m: float | None = Field(default=None, ge=0.0)
     enabled: bool | None = None
 
 
@@ -114,6 +157,7 @@ class CaseUpdate(BaseModel):
     expected_keywords: list[str] | None = None
     source_docs: list[str] | None = None
     expected_schema: dict | None = None
+    tools_config: dict | None = None
     expected_behavior: str | None = None
     severity: str | None = Field(default=None, pattern="^(low|medium|high|critical)$")
     evaluation_criteria: str | None = None

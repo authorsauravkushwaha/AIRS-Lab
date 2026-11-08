@@ -1,8 +1,8 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import Response
+import yaml
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -15,13 +15,20 @@ router = APIRouter(prefix="/api/test-cases", tags=["test-cases"])
 
 def _out(c: TestCase) -> CaseOut:
     return CaseOut(
-        id=c.id, suite_id=c.suite_id, name=c.name, category=c.category, prompt=c.prompt,
+        id=c.id,
+        suite_id=c.suite_id,
+        name=c.name,
+        category=c.category,
+        prompt=c.prompt,
         reference_answer=c.reference_answer,
         expected_keywords=json.loads(c.expected_keywords or "[]"),
         source_docs=json.loads(c.source_docs or "[]"),
         expected_schema=json.loads(c.expected_schema) if c.expected_schema else None,
-        expected_behavior=c.expected_behavior, severity=c.severity,
-        evaluation_criteria=c.evaluation_criteria, created_at=c.created_at,
+        tools_config=json.loads(c.tools_config) if c.tools_config else None,
+        expected_behavior=c.expected_behavior,
+        severity=c.severity,
+        evaluation_criteria=c.evaluation_criteria,
+        created_at=c.created_at,
     )
 
 
@@ -30,11 +37,18 @@ def create_case(body: CaseIn, db: Session = Depends(get_db)):
     if not db.get(TestSuite, body.suite_id):
         raise HTTPException(404, "Suite not found")
     c = TestCase(
-        id=str(uuid.uuid4()), suite_id=body.suite_id, name=body.name, category=body.category,
-        prompt=body.prompt, reference_answer=body.reference_answer,
-        expected_keywords=json.dumps(body.expected_keywords), source_docs=json.dumps(body.source_docs),
+        id=str(uuid.uuid4()),
+        suite_id=body.suite_id,
+        name=body.name,
+        category=body.category,
+        prompt=body.prompt,
+        reference_answer=body.reference_answer,
+        expected_keywords=json.dumps(body.expected_keywords),
+        source_docs=json.dumps(body.source_docs),
         expected_schema=json.dumps(body.expected_schema) if body.expected_schema else "",
-        expected_behavior=body.expected_behavior, severity=body.severity,
+        tools_config=json.dumps(body.tools_config) if body.tools_config else "",
+        expected_behavior=body.expected_behavior,
+        severity=body.severity,
         evaluation_criteria=body.evaluation_criteria,
     )
     db.add(c)
@@ -65,22 +79,33 @@ def export_cases(suite_id: str | None = None, db: Session = Depends(get_db)):
 @router.post("/import", status_code=201)
 async def import_cases(file: UploadFile = File(...), db: Session = Depends(get_db)):
     raw = (await file.read()).decode("utf-8")
-    records = [json.loads(line) for line in raw.splitlines() if line.strip()] if file.filename.endswith(".jsonl") \
-        else json.loads(raw)
+    fname = (file.filename or "").lower()
+    if fname.endswith(".jsonl"):
+        records = [json.loads(line) for line in raw.splitlines() if line.strip()]
+    elif fname.endswith((".yaml", ".yml")):
+        records = yaml.safe_load(raw)
+    else:
+        records = json.loads(raw)
     if isinstance(records, dict):
-        records = [records]
+        records = records.get("cases", [records])
     created = 0
     for r in records:
         suite = db.get(TestSuite, r.get("suite_id", ""))
         if not suite:
             raise HTTPException(400, f"Unknown suite_id: {r.get('suite_id')}")
         c = TestCase(
-            id=str(uuid.uuid4()), suite_id=suite.id, name=r["name"], category=r.get("category", "general"),
-            prompt=r["prompt"], reference_answer=r.get("reference_answer", ""),
+            id=str(uuid.uuid4()),
+            suite_id=suite.id,
+            name=r["name"],
+            category=r.get("category", "general"),
+            prompt=r["prompt"],
+            reference_answer=r.get("reference_answer", ""),
             expected_keywords=json.dumps(r.get("expected_keywords", [])),
             source_docs=json.dumps(r.get("source_docs", [])),
             expected_schema=json.dumps(r["expected_schema"]) if r.get("expected_schema") else "",
-            expected_behavior=r.get("expected_behavior", ""), severity=r.get("severity", "medium"),
+            tools_config=json.dumps(r["tools_config"]) if r.get("tools_config") else "",
+            expected_behavior=r.get("expected_behavior", ""),
+            severity=r.get("severity", "medium"),
             evaluation_criteria=r.get("evaluation_criteria", ""),
         )
         db.add(c)
@@ -97,9 +122,9 @@ def update_case(case_id: str, body: CaseUpdate, db: Session = Depends(get_db)):
         raise HTTPException(404, "Test case not found")
     changes = body.model_dump(exclude_unset=True)
     for field, value in changes.items():
-        if field == "expected_keywords" or field == "source_docs":
+        if field in ("expected_keywords", "source_docs"):
             setattr(c, field, json.dumps(value or []))
-        elif field == "expected_schema":
+        elif field in ("expected_schema", "tools_config"):
             setattr(c, field, json.dumps(value) if value else "")
         else:
             setattr(c, field, value)
@@ -115,10 +140,19 @@ def duplicate_case(case_id: str, db: Session = Depends(get_db)):
     if not c:
         raise HTTPException(404, "Test case not found")
     dup = TestCase(
-        id=str(uuid.uuid4()), suite_id=c.suite_id, name=c.name + " (copy)", category=c.category,
-        prompt=c.prompt, reference_answer=c.reference_answer, expected_keywords=c.expected_keywords,
-        source_docs=c.source_docs, expected_schema=c.expected_schema, expected_behavior=c.expected_behavior,
-        severity=c.severity, evaluation_criteria=c.evaluation_criteria,
+        id=str(uuid.uuid4()),
+        suite_id=c.suite_id,
+        name=c.name + " (copy)",
+        category=c.category,
+        prompt=c.prompt,
+        reference_answer=c.reference_answer,
+        expected_keywords=c.expected_keywords,
+        source_docs=c.source_docs,
+        expected_schema=c.expected_schema,
+        tools_config=c.tools_config,
+        expected_behavior=c.expected_behavior,
+        severity=c.severity,
+        evaluation_criteria=c.evaluation_criteria,
     )
     db.add(dup)
     log(db, "case.duplicated", entity=dup.id, detail=dup.name)

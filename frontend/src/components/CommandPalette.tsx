@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, Boxes, FileText, FlaskConical, GitCompareArrows, Layers, LayoutDashboard,
+  ArrowRight, BadgeCheck, Boxes, FileText, FlaskConical, GitCompareArrows, Layers, LayoutDashboard,
   Search, Settings, ShieldCheck, TestTube2, FolderKanban, Play,
 } from 'lucide-react'
 
@@ -11,15 +11,16 @@ interface Command {
 const COMMANDS: Command[] = [
   { id: 'overview', label: 'Go to Overview', hint: 'Navigate', icon: <LayoutDashboard className="h-4 w-4" />, path: '/', keywords: 'home dashboard metrics' },
   { id: 'projects', label: 'Go to Projects', hint: 'Navigate', icon: <FolderKanban className="h-4 w-4" />, path: '/projects', keywords: 'workspace new project' },
-  { id: 'models', label: 'Go to Model Management', hint: 'Navigate', icon: <Boxes className="h-4 w-4" />, path: '/models', keywords: 'model provider mock openai ollama connection' },
-  { id: 'suites', label: 'Go to Test Suites', hint: 'Navigate', icon: <Layers className="h-4 w-4" />, path: '/suites', keywords: 'suite collection cases' },
-  { id: 'cases', label: 'Go to Test Cases', hint: 'Navigate', icon: <TestTube2 className="h-4 w-4" />, path: '/cases', keywords: 'case prompt expected oracle' },
-  { id: 'run', label: 'Run a new evaluation', hint: 'Action', icon: <Play className="h-4 w-4" />, path: '/run', keywords: 'run evaluation execute suite benchmark' },
+  { id: 'models', label: 'Go to Model Management', hint: 'Navigate', icon: <Boxes className="h-4 w-4" />, path: '/models', keywords: 'model provider mock openai anthropic ollama webhook playground' },
+  { id: 'suites', label: 'Go to Test Suites & Domain Packs', hint: 'Navigate', icon: <Layers className="h-4 w-4" />, path: '/suites', keywords: 'suite collection cases quant finance clinical family office' },
+  { id: 'cases', label: 'Go to Test Cases', hint: 'Navigate', icon: <TestTube2 className="h-4 w-4" />, path: '/cases', keywords: 'case prompt expected oracle json schema tool' },
+  { id: 'run', label: 'Run a new evaluation', hint: 'Action', icon: <Play className="h-4 w-4" />, path: '/run', keywords: 'run evaluation execute suite benchmark concurrency cache' },
   { id: 'reliability', label: 'Go to Reliability Lab', hint: 'Navigate', icon: <FlaskConical className="h-4 w-4" />, path: '/reliability', keywords: 'reliability results evidence failures' },
-  { id: 'security', label: 'Run Security Lab', hint: 'Navigate', icon: <ShieldCheck className="h-4 w-4" />, path: '/security', keywords: 'security injection leakage tool findings' },
-  { id: 'compare', label: 'Go to Model Comparison', hint: 'Navigate', icon: <GitCompareArrows className="h-4 w-4" />, path: '/compare', keywords: 'compare bake-off models pass rate' },
-  { id: 'reports', label: 'Go to Reports', hint: 'Navigate', icon: <FileText className="h-4 w-4" />, path: '/reports', keywords: 'report export pdf csv json download' },
-  { id: 'settings', label: 'Go to Settings', hint: 'Navigate', icon: <Settings className="h-4 w-4" />, path: '/settings', keywords: 'settings config audit system danger zone' },
+  { id: 'security', label: 'Run Security Lab (OWASP & ATLAS)', hint: 'Navigate', icon: <ShieldCheck className="h-4 w-4" />, path: '/security', keywords: 'security injection leakage owasp mitre dlp findings' },
+  { id: 'compare', label: 'Model Comparison & Arbitrage ROI', hint: 'Navigate', icon: <GitCompareArrows className="h-4 w-4" />, path: '/compare', keywords: 'compare bake-off models pass rate mcnemar arbitrage cost savings' },
+  { id: 'gates', label: 'Release Gates & Production Traces', hint: 'Governance', icon: <BadgeCheck className="h-4 w-4" />, path: '/gates', keywords: 'release gate certificate signoff production traces dlp redact promote' },
+  { id: 'reports', label: 'Go to Reports & Evidence Bundles', hint: 'Navigate', icon: <FileText className="h-4 w-4" />, path: '/reports', keywords: 'report export pdf csv json zip bundle download' },
+  { id: 'settings', label: 'Go to Settings & Audit Chain', hint: 'Navigate', icon: <Settings className="h-4 w-4" />, path: '/settings', keywords: 'settings config audit hash chain verify system' },
 ]
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {

@@ -10,6 +10,7 @@ import RunEval from './pages/RunEval'
 import Reliability from './pages/Reliability'
 import Security from './pages/Security'
 import Compare from './pages/Compare'
+import Gates from './pages/Gates'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/reliability" element={<Reliability />} />
           <Route path="/security" element={<Security />} />
           <Route path="/compare" element={<Compare />} />
+          <Route path="/gates" element={<Gates />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />

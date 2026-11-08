@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import {
   Boxes, ChevronRight, FileText, FlaskConical, GitCompareArrows, Layers, LayoutDashboard,
-  Menu, Play, Search, Settings, ShieldCheck, TestTube2, FolderKanban, X, ExternalLink,
+  Menu, Play, Search, Settings, ShieldCheck, TestTube2, FolderKanban, X, ExternalLink, BadgeCheck,
 } from 'lucide-react'
 import CommandPalette from '../components/CommandPalette'
 import { api } from '../api'
@@ -26,17 +26,18 @@ const NAV_SECTIONS: { label: string; items: { to: string; label: string; icon: R
     ],
   },
   {
-    label: 'Evidence labs',
+    label: 'Evidence & governance',
     items: [
       { to: '/reliability', label: 'Reliability Lab', icon: <FlaskConical className="h-4 w-4" /> },
       { to: '/security', label: 'Security Lab', icon: <ShieldCheck className="h-4 w-4" /> },
       { to: '/compare', label: 'Model Comparison', icon: <GitCompareArrows className="h-4 w-4" /> },
+      { to: '/gates', label: 'Release Gates & Traces', icon: <BadgeCheck className="h-4 w-4" /> },
       { to: '/reports', label: 'Reports', icon: <FileText className="h-4 w-4" /> },
     ],
   },
 ]
 
-const ALL_NAV = NAV_SECTIONS.flatMap((s) => s.items)
+const ALL_NAV = [...NAV_SECTIONS.flatMap((s) => s.items), { to: '/settings', label: 'Settings', icon: null }]
 
 function Logo({ compact }: { compact?: boolean }) {
   return (
@@ -54,7 +55,7 @@ function Logo({ compact }: { compact?: boolean }) {
       {!compact && (
         <span className="leading-tight">
           <span className="block font-display text-[17px] font-bold tracking-tight text-slate-50">AEGIS<span className="text-brand">&nbsp;AI&nbsp;LAB</span></span>
-          <span className="block font-mono text-[8.5px] uppercase tracking-[0.3em] text-mute-dim">Reliability · Security</span>
+          <span className="block font-mono text-[8.5px] uppercase tracking-[0.3em] text-mute-dim">Reliability · Security · Governance</span>
         </span>
       )}
     </Link>
@@ -109,7 +110,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   )
 
   const sidebar = (
-    <aside className="flex h-full w-[248px] shrink-0 flex-col border-r border-line bg-ink-900/80 backdrop-blur-xl">
+    <aside className="flex h-full w-[254px] shrink-0 flex-col border-r border-line bg-ink-900/80 backdrop-blur-xl">
       <div className="border-b border-line px-5 py-4">
         <Logo />
       </div>
@@ -141,7 +142,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             Source &amp; docs
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
-          <p className="mt-2.5 text-center font-mono text-[9px] text-mute-dim">AEGIS AI LAB · v{health?.version ?? '1.0.0'}</p>
+          <p className="mt-2.5 text-center font-mono text-[9px] text-mute-dim">AEGIS AI LAB · v{health?.version ?? '2.0.0'}</p>
         </div>
       </div>
     </aside>
@@ -151,10 +152,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="app-backdrop relative flex h-screen overflow-hidden">
       <div className="app-grid pointer-events-none absolute inset-x-0 top-0 h-[560px]" aria-hidden="true" />
 
-      {/* Desktop sidebar */}
       <div className="relative z-10 hidden lg:flex">{sidebar}</div>
 
-      {/* Mobile drawer */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
@@ -163,7 +162,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        {/* Top bar */}
         <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-ink-950/70 px-4 backdrop-blur-xl sm:px-6">
           <div className="flex min-w-0 items-center gap-2 text-[13px]">
             <button className="rounded-lg border border-line p-1.5 text-mute hover:text-white lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
@@ -175,9 +173,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 font-mono text-[9.5px] uppercase tracking-[0.18em] text-mute md:inline-flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-400" />
-              Local-first · Mock provider
+            <span className="hidden items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/5 px-3 py-1 font-mono text-[9.5px] uppercase tracking-[0.18em] text-emerald-300 md:inline-flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              SHA-256 Flight Recorder · v{health?.version ?? '2.0.0'}
             </span>
             <button
               onClick={() => setPaletteOpen(true)}
@@ -191,7 +189,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Main content */}
         <main id="main-content" className="min-w-0 flex-1 overflow-y-auto">
           <div key={location.pathname} className="mx-auto w-full max-w-[1480px] px-4 py-6 sm:px-6 lg:px-8 animate-fade-up">
             {children}

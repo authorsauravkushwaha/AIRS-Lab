@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, Database, FileText, FlaskConical, Info, ShieldCheck, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Database, FileText, FlaskConical, Lock, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
 import { api } from '../api'
-import type { AuditEvent, SystemConfig } from '../types'
+import type { AuditChainStatus, AuditEvent, SystemConfig } from '../types'
 import { Button, Card, ErrorMsg, Modal, PageHeader } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { fmtDateTime } from '../lib/format'
 
 function eventTone(eventType: string): string {
-  if (eventType.includes('deleted') || eventType.includes('cleared')) return 'bg-rose-400'
-  if (eventType.startsWith('evaluation') || eventType.startsWith('security')) return 'bg-emerald-400'
-  if (eventType.startsWith('report')) return 'bg-sky-400'
+  if (eventType.includes('deleted') || eventType.includes('cleared') || eventType.includes('blocked')) return 'bg-rose-400'
+  if (eventType.startsWith('evaluation') || eventType.startsWith('security') || eventType.includes('approved')) return 'bg-emerald-400'
+  if (eventType.startsWith('report') || eventType.startsWith('trace')) return 'bg-sky-400'
   return 'bg-slate-500'
 }
 
@@ -17,16 +17,47 @@ export default function SettingsPage() {
   const toast = useToast()
   const [config, setConfig] = useState<SystemConfig | null>(null)
   const [audit, setAudit] = useState<AuditEvent[]>([])
+  const [chain, setChain] = useState<AuditChainStatus | null>(null)
+  const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState('')
   const [clearOpen, setClearOpen] = useState(false)
   const [clearing, setClearing] = useState(false)
 
   const refresh = useCallback(() => {
-    api<SystemConfig>('/api/system/config').then(setConfig).catch((e) => setError(e instanceof Error ? e.message : String(e)))
-    api<AuditEvent[]>('/api/system/audit?limit=20').then(setAudit).catch(() => {})
+    api<SystemConfig>('/api/system/config').then((cfg) => {
+      setConfig(cfg)
+      if (cfg.audit_chain) setChain(cfg.audit_chain)
+    }).catch((e) => setError(e instanceof Error ? e.message : String(e)))
+    api<AuditEvent[]>('/api/system/audit?limit=25').then(setAudit).catch(() => {})
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
+
+  const verifyChain = async () => {
+    setVerifying(true)
+    try {
+      const res = await api<AuditChainStatus>('/api/system/audit/verify')
+      setChain(res)
+      toast[res.valid ? 'success' : 'error'](
+        res.valid ? 'Audit Hash-Chain Verified' : 'Audit Tampering Detected!',
+        res.valid ? `${res.checked_events} sequential SHA-256 events verified from GENESIS.` : 'Chain link hash mismatch.'
+      )
+    } catch (e) {
+      toast.error('Verification failed', e instanceof Error ? e.message : String(e))
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  const clearCache = async () => {
+    try {
+      const res = await api<{ deleted_entries: number }>('/api/system/cache', { method: 'DELETE' })
+      toast.info('Response cache cleared', `${res.deleted_entries} cached entry(s) purged.`)
+      refresh()
+    } catch (e) {
+      toast.error('Could not clear cache', e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const clearRuns = async () => {
     setClearing(true)
@@ -47,19 +78,20 @@ export default function SettingsPage() {
         { icon: <FlaskConical className="h-4 w-4" />, label: 'Evaluation runs', value: config.counts.runs },
         { icon: <ShieldCheck className="h-4 w-4" />, label: 'Stored results', value: config.counts.results },
         { icon: <AlertTriangle className="h-4 w-4" />, label: 'Security findings', value: config.counts.findings },
-        { icon: <FileText className="h-4 w-4" />, label: 'Generated reports', value: config.counts.reports },
+        { icon: <FileText className="h-4 w-4" />, label: 'Signed reports', value: config.counts.reports },
       ]
     : []
 
   const rows: [string, string][] = config
     ? [
-        ['Service', config.service],
-        ['Version', config.version],
+        ['Service & Version', `${config.service} · v${config.version} (evaluator ${config.evaluator_version ?? '2.0.0'})`],
         ['Database backend', config.database],
-        ['Secret redaction', config.secret_redaction_enabled ? 'Enabled' : 'Disabled'],
-        ['Live provider key', config.openai_key_configured ? `Configured (env: ${config.openai_key_env})` : `Not configured — set ${config.openai_key_env}`],
+        ['DLP secret redaction', config.secret_redaction_enabled ? 'Enabled (SSN, Email, Card, AWS IAM, JWT)' : 'Disabled'],
+        ['OpenAI provider key', config.openai_key_configured ? `Configured (${config.openai_key_env})` : `Not configured — set ${config.openai_key_env}`],
+        ['Anthropic provider key', config.anthropic_key_configured ? `Configured (${config.anthropic_key_env})` : `Not configured — set ${config.anthropic_key_env ?? 'AEGIS_ANTHROPIC_API_KEY'}`],
         ['Ollama base URL', config.ollama_base_url],
-        ['Local SPA serving', config.frontend_served ? 'Serving frontend/dist' : 'API only (use the Vite dev server)'],
+        ['Response cache entries', String(config.counts.cached_responses ?? 0)],
+        ['Single-origin SPA', config.frontend_served ? 'Serving built frontend/dist' : 'API mode'],
       ]
     : []
 
@@ -67,16 +99,31 @@ export default function SettingsPage() {
     <div>
       <PageHeader
         eyebrow="System"
-        title="Settings"
-        description="Runtime configuration and the append-only audit trail. Secrets are never shown or stored in the browser."
+        title="Settings & Cryptographic Audit Chain"
+        description="Non-secret runtime introspection and the tamper-evident SHA-256 hash-chained workspace ledger."
+        actions={<Button variant="outline" size="sm" loading={verifying} onClick={verifyChain}><Lock className="h-4 w-4" /> Verify SHA-256 audit chain</Button>}
       />
       {error && <div className="mb-4"><ErrorMsg text={error} onRetry={refresh} /></div>}
+
+      {chain && (
+        <div className={`mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-3.5 text-xs ${
+          chain.valid ? 'border-emerald-400/25 bg-emerald-500/5 text-emerald-200' : 'border-rose-400/35 bg-rose-500/10 text-rose-200'
+        }`}>
+          <span className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {chain.valid
+              ? `Tamper-evident ledger intact — ${chain.checked_events} sequential events cryptographically verified from GENESIS.`
+              : 'WARNING: Hash-chain verification failed — historical audit event was altered!'}
+          </span>
+          <span className="font-mono text-[10px] text-mute">head sha256: {chain.head_hash.slice(0, 20)}…</span>
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-5">
         <Card title="Runtime configuration" icon={<Database className="h-4 w-4" />} className="xl:col-span-3">
           <dl className="divide-y divide-line text-sm">
             {rows.map(([k, v]) => (
-              <div key={k} className="grid grid-cols-3 gap-4 py-3">
+              <div key={k} className="grid grid-cols-3 gap-4 py-2.5">
                 <dt className="text-[11px] uppercase tracking-wider text-mute-dim">{k}</dt>
                 <dd className="col-span-2 break-all font-mono text-[12px] text-slate-200">{v}</dd>
               </div>
@@ -85,7 +132,8 @@ export default function SettingsPage() {
           </dl>
         </Card>
 
-        <Card title="Stored evidence" icon={<FlaskConical className="h-4 w-4" />} className="xl:col-span-2">
+        <Card title="Stored evidence" icon={<FlaskConical className="h-4 w-4" />} className="xl:col-span-2"
+              action={<Button variant="ghost" size="sm" onClick={clearCache}><RefreshCw className="h-3.5 w-3.5" /> Purge cache</Button>}>
           <div className="grid grid-cols-2 gap-3">
             {stats.map((s) => (
               <div key={s.label} className="rounded-xl border border-line bg-ink-800/70 p-3.5">
@@ -95,15 +143,11 @@ export default function SettingsPage() {
             ))}
             {!config && <p className="col-span-2 py-6 text-center text-sm text-mute">Loading counts…</p>}
           </div>
-          <div className="mt-4 flex items-start gap-2 rounded-xl border border-sky-400/20 bg-sky-400/5 p-3 text-xs leading-relaxed text-sky-200/80">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>Evidence lives in the configured database and never leaves this machine. Mock-provider results demonstrate plumbing — they are labeled synthetic and are not real model performance.</p>
-          </div>
         </Card>
       </div>
 
-      <Card title="Audit trail" icon={<Database className="h-4 w-4" />} className="mt-5"
-            action={<span className="font-mono text-[9px] uppercase tracking-widest text-mute-dim">last 20 events</span>}>
+      <Card title="Hash-chained audit trail" icon={<Lock className="h-4 w-4" />} className="mt-5"
+            action={<span className="font-mono text-[9px] uppercase tracking-widest text-mute-dim">last 25 signed events</span>}>
         {audit.length === 0 ? (
           <p className="py-6 text-center text-sm text-mute">No activity recorded yet.</p>
         ) : (
@@ -112,9 +156,15 @@ export default function SettingsPage() {
               <li key={e.id} className="flex flex-wrap items-center gap-3 py-2.5">
                 <span className="flex items-center gap-2">
                   <span className={`h-1.5 w-1.5 rounded-full ${eventTone(e.event_type)}`} />
+                  {e.seq !== undefined && <span className="font-mono text-[9.5px] text-mute-dim">#{e.seq}</span>}
                   <span className="font-mono text-[10.5px] uppercase tracking-wider text-slate-300">{e.event_type.replace(/\./g, ' ')}</span>
                 </span>
                 <span className="min-w-0 flex-1 truncate text-slate-400" title={e.detail}>{e.detail || '—'}</span>
+                {e.entry_hash && (
+                  <span className="hidden rounded border border-line bg-ink-850 px-1.5 py-0.5 font-mono text-[9px] text-brand-300 sm:inline" title={`SHA-256: ${e.entry_hash}`}>
+                    {e.entry_hash.slice(0, 10)}…
+                  </span>
+                )}
                 <time className="font-mono text-[10px] text-mute-dim">{fmtDateTime(e.created_at)}</time>
               </li>
             ))}
@@ -126,7 +176,7 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-rose-200">Clear run history</p>
-            <p className="mt-0.5 text-xs text-mute">Deletes every evaluation run and its stored results. Projects, models, cases and existing reports are kept.</p>
+            <p className="mt-0.5 text-xs text-mute">Deletes every evaluation run and its stored results. Projects, models, cases and signed reports are kept.</p>
           </div>
           <Button variant="danger" className="shrink-0" onClick={() => setClearOpen(true)}>
             <Trash2 className="h-4 w-4" /> Clear run history
