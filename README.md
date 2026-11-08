@@ -20,7 +20,7 @@ An enterprise-grade, local-first AI reliability, security, inference-arbitrage, 
 ### Requirements
 
 - Python **3.11 or newer**
-- Node.js **20 or newer** (npm is included)
+- Node.js **22.22.2 or newer** (npm is included)
 - Windows 10/11 with PowerShell, or a current Linux distribution
 
 The setup helper creates a project-local `.venv`, installs the Python packages, installs the frontend dependencies, and builds the web UI. No shell activation or OS-specific path commands are needed.

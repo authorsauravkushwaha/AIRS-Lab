@@ -5,6 +5,7 @@ Run from the repository root with: python scripts/setup_local.py
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -35,9 +36,20 @@ def main() -> int:
         return 1
 
     npm = shutil.which("npm")
-    if not npm:
-        print("Node.js 20+ (including npm) is required to build the web interface.", file=sys.stderr)
+    node = shutil.which("node")
+    if not npm or not node:
+        print("Node.js 22.22.2+ (including npm) is required to build the web interface.", file=sys.stderr)
         print("Install Node.js, then rerun: python scripts/setup_local.py", file=sys.stderr)
+        return 1
+    version_text = "unknown"
+    try:
+        version_text = subprocess.check_output([node, "--version"], text=True).strip()
+        version_match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", version_text)
+        node_version = tuple(map(int, version_match.groups())) if version_match else (0, 0, 0)
+    except (OSError, subprocess.SubprocessError):
+        node_version = (0, 0, 0)
+    if node_version < (22, 22, 2):
+        print(f"Node.js 22.22.2+ is required (found {version_text!r}).", file=sys.stderr)
         return 1
 
     venv_python = VENV / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
