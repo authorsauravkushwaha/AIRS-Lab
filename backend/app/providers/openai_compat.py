@@ -1,6 +1,7 @@
 """OpenAI-compatible API provider (OpenAI, vLLM, SGLang, Together, Groq, Azure).
 API key is read server-side from env only, with exponential backoff on 429/5xx.
 """
+
 import json
 import os
 import time
@@ -27,9 +28,7 @@ class OpenAICompatProvider(BaseProvider):
 
     def generate(self, prompt: str, system: str = "", tools: list[dict] | None = None) -> ModelResponse:
         eff_sys = system or (self.config.system_prompt or "")
-        messages = ([{"role": "system", "content": eff_sys}] if eff_sys else []) + [
-            {"role": "user", "content": prompt}
-        ]
+        messages = ([{"role": "system", "content": eff_sys}] if eff_sys else []) + [{"role": "user", "content": prompt}]
         payload: dict = {
             "model": self.config.model_id,
             "messages": messages,
@@ -51,7 +50,7 @@ class OpenAICompatProvider(BaseProvider):
                         json=payload,
                     )
                     if r.status_code in (429, 502, 503, 504) and attempt < 2:
-                        time.sleep(0.5 * (2 ** attempt))
+                        time.sleep(0.5 * (2**attempt))
                         continue
                     r.raise_for_status()
                     data = r.json()
@@ -81,7 +80,7 @@ class OpenAICompatProvider(BaseProvider):
             except httpx.HTTPError as e:
                 last_err = e
                 if attempt < 2:
-                    time.sleep(0.4 * (2 ** attempt))
+                    time.sleep(0.4 * (2**attempt))
                     continue
                 raise ProviderError(f"Provider request failed: {e}") from e
         raise ProviderError(f"Provider request failed: {last_err}")

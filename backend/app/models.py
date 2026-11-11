@@ -1,5 +1,6 @@
 """SQLAlchemy entities for AEGIS AI LAB v2.0."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -8,7 +9,7 @@ from app.db import Base
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Project(Base):
@@ -70,10 +71,10 @@ class TestCase(Base):
     category: Mapped[str] = mapped_column(String(100), default="general")
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     reference_answer: Mapped[str] = mapped_column(Text, default="")
-    expected_keywords: Mapped[str] = mapped_column(Text, default="")   # JSON list
-    source_docs: Mapped[str] = mapped_column(Text, default="")         # JSON list
-    expected_schema: Mapped[str] = mapped_column(Text, default="")     # JSON schema
-    tools_config: Mapped[str] = mapped_column(Text, default="")        # JSON tool definitions & expected call
+    expected_keywords: Mapped[str] = mapped_column(Text, default="")  # JSON list
+    source_docs: Mapped[str] = mapped_column(Text, default="")  # JSON list
+    expected_schema: Mapped[str] = mapped_column(Text, default="")  # JSON schema
+    tools_config: Mapped[str] = mapped_column(Text, default="")  # JSON tool definitions & expected call
     expected_behavior: Mapped[str] = mapped_column(Text, default="")
     severity: Mapped[str] = mapped_column(String(20), default="medium")
     evaluation_criteria: Mapped[str] = mapped_column(Text, default="")

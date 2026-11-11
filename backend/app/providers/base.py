@@ -1,4 +1,5 @@
 """Provider-independent LLM adapter interface."""
+
 from dataclasses import dataclass, field
 
 

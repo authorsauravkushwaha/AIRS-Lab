@@ -1,4 +1,5 @@
 """Test suite CRUD, SHA-256 dataset fingerprinting, and 1-click Domain Pack installer."""
+
 import json
 import uuid
 
@@ -60,21 +61,23 @@ def install_template(body: InstallPackIn, db: Session = Depends(get_db)):
     db.add(suite)
     db.flush()
     for c in pack["cases"]:
-        db.add(TestCase(
-            id=str(uuid.uuid4()),
-            suite_id=suite.id,
-            name=c["name"],
-            category=c["category"],
-            prompt=c["prompt"],
-            reference_answer=c.get("reference_answer", ""),
-            expected_keywords=json.dumps(c.get("expected_keywords", [])),
-            source_docs=json.dumps(c.get("source_docs", [])),
-            expected_schema=json.dumps(c["expected_schema"]) if c.get("expected_schema") else "",
-            tools_config=json.dumps(c["tools_config"]) if c.get("tools_config") else "",
-            expected_behavior=c.get("expected_behavior", ""),
-            severity=c.get("severity", "medium"),
-            evaluation_criteria=c.get("evaluation_criteria", ""),
-        ))
+        db.add(
+            TestCase(
+                id=str(uuid.uuid4()),
+                suite_id=suite.id,
+                name=c["name"],
+                category=c["category"],
+                prompt=c["prompt"],
+                reference_answer=c.get("reference_answer", ""),
+                expected_keywords=json.dumps(c.get("expected_keywords", [])),
+                source_docs=json.dumps(c.get("source_docs", [])),
+                expected_schema=json.dumps(c["expected_schema"]) if c.get("expected_schema") else "",
+                tools_config=json.dumps(c["tools_config"]) if c.get("tools_config") else "",
+                expected_behavior=c.get("expected_behavior", ""),
+                severity=c.get("severity", "medium"),
+                evaluation_criteria=c.get("evaluation_criteria", ""),
+            )
+        )
     log(db, "suite.template_installed", entity=suite.id, detail=f"pack={pack['id']} cases={len(pack['cases'])}")
     db.commit()
     db.refresh(suite)

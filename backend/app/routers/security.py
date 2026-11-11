@@ -1,4 +1,5 @@
 """Security lab endpoints: run defensive & adversarial tests mapped to OWASP & MITRE ATLAS."""
+
 import json
 
 from fastapi import APIRouter, Depends
@@ -31,9 +32,13 @@ def run_security(body: SecurityRunRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/findings")
-def list_findings(run_id: str | None = None, severity: str | None = None,
-                  outcome: str | None = None, owasp_id: str | None = None,
-                  db: Session = Depends(get_db)):
+def list_findings(
+    run_id: str | None = None,
+    severity: str | None = None,
+    outcome: str | None = None,
+    owasp_id: str | None = None,
+    db: Session = Depends(get_db),
+):
     q = db.query(SecurityFinding)
     if run_id:
         q = q.filter(SecurityFinding.run_id == run_id)

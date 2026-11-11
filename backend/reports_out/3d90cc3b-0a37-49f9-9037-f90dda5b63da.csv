@@ -1,2 +1,0 @@
-test_case_id,status,method,score,latency_ms,tokens
-5ed9cebf-a64c-4877-ab9d-fe3d598e6139,PASS,exact-match,1.0,12.0,4

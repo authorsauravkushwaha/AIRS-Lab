@@ -1,4 +1,4 @@
-# AEGIS AI LAB v2.0 — API Documentation
+# AEGIS AI LAB — API Documentation
 
 Base URL: `http://localhost:8000`. Interactive OpenAPI docs at `/docs`.
 All endpoints are served single-origin alongside the compiled React SPA (`frontend/dist`) or proxied via Vite in development.
@@ -74,6 +74,7 @@ All endpoints are served single-origin alongside the compiled React SPA (`fronte
 | POST | `/api/traces` | Ingest production trace with automatic server-side PII/secret DLP scrubbing (SSN, Email, Card PAN, AWS IAM, JWT) |
 | GET | `/api/traces` | List sanitized production traces |
 | POST | `/api/traces/{id}/promote` | 1-click promote a sanitized production failure into a permanent regression `TestCase` |
+| DELETE | `/api/traces/{id}` | Delete a stored production trace |
 
 ## Reports & Signed Evidence Bundles
 | Method | Endpoint | Purpose |
@@ -86,6 +87,7 @@ All endpoints are served single-origin alongside the compiled React SPA (`fronte
 ## System & Cryptographic Audit Chain
 | Method | Endpoint | Purpose |
 |---|---|---|
+| GET | `/api/health` | Liveness probe: service name and version (used by Docker healthchecks) |
 | GET | `/api/system/config` | Non-secret runtime introspection, provider key presence, counts, and audit-chain status |
 | GET | `/api/system/audit` | Sequential hash-chained `AuditEvent` ledger (`seq`, `prev_hash`, `entry_hash`) |
 | GET | `/api/system/audit/verify` | Recompute and verify every SHA-256 link from `GENESIS` to head |

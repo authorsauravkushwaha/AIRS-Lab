@@ -8,8 +8,18 @@ services:
     environment:
       - AEGIS_DATABASE_URL=sqlite:////data/aegis.db
       - AEGIS_OPENAI_API_KEY=${AEGIS_OPENAI_API_KEY:-}
+      - AEGIS_ANTHROPIC_API_KEY=${AEGIS_ANTHROPIC_API_KEY:-}
+      - AEGIS_CORS_ORIGINS=${AEGIS_CORS_ORIGINS:-*}
     volumes:
       - aegis-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
@@ -17,6 +27,9 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   aegis-data:

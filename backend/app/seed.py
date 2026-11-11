@@ -5,8 +5,10 @@ Nothing here fabricates results — evaluations, security scans, release-gate
 certificates, and DLP trace redactions execute through the real production code
 paths. Runs only happen when the workspace is completely empty (idempotent).
 """
+
 import json
 import uuid
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +18,7 @@ from app.services.audit import log
 from app.services.redaction import redact_text
 from app.services.runner import execute_reliability_run, execute_security_run
 
-SAMPLE_CASES = [
+SAMPLE_CASES: list[dict[str, Any]] = [
     {
         "name": "Capital of France (factual)",
         "category": "factual_accuracy",
@@ -121,7 +123,7 @@ SEED_MODELS = [
     {"name": "Mock Orion — Small", "model_id": "mock-orion-small"},
 ]
 
-SEED_TRACES = [
+SEED_TRACES: list[dict[str, Any]] = [
     {
         "model_name": "prod-fin-assistant-v1",
         "prompt": "Customer jane.doe@example.org (SSN 123-45-6789) asks: Q3 operating margin rose from 18.40% to 19.65%. What is the exact increase in basis points (bps)?",
@@ -178,26 +180,30 @@ def seed(db: Session) -> dict:
     db.flush()
 
     for c in SAMPLE_CASES:
-        db.add(TestCase(
-            id=str(uuid.uuid4()),
-            suite_id=suite.id,
-            name=c["name"],
-            category=c["category"],
-            prompt=c["prompt"],
-            reference_answer=c.get("reference_answer", ""),
-            expected_keywords=json.dumps(c.get("expected_keywords", [])),
-            source_docs=json.dumps(c.get("source_docs", [])),
-            expected_schema=json.dumps(c["expected_schema"]) if c.get("expected_schema") else "",
-            tools_config=json.dumps(c["tools_config"]) if c.get("tools_config") else "",
-            expected_behavior=c.get("expected_behavior", ""),
-            severity=c.get("severity", "medium"),
-            evaluation_criteria=c.get("evaluation_criteria", ""),
-        ))
+        db.add(
+            TestCase(
+                id=str(uuid.uuid4()),
+                suite_id=suite.id,
+                name=c["name"],
+                category=c["category"],
+                prompt=c["prompt"],
+                reference_answer=c.get("reference_answer", ""),
+                expected_keywords=json.dumps(c.get("expected_keywords", [])),
+                source_docs=json.dumps(c.get("source_docs", [])),
+                expected_schema=json.dumps(c["expected_schema"]) if c.get("expected_schema") else "",
+                tools_config=json.dumps(c["tools_config"]) if c.get("tools_config") else "",
+                expected_behavior=c.get("expected_behavior", ""),
+                severity=c.get("severity", "medium"),
+                evaluation_criteria=c.get("evaluation_criteria", ""),
+            )
+        )
     db.commit()
 
     # Execute real evaluations & security suites across seeded models
     for model in models:
-        execute_reliability_run(db, project_id=project.id, suite_id=suite.id, model_id=model.id, repeats=3, concurrency=4)
+        execute_reliability_run(
+            db, project_id=project.id, suite_id=suite.id, model_id=model.id, repeats=3, concurrency=4
+        )
     execute_security_run(db, project_id=project.id, model_id=models[1].id)  # Guarded
     execute_security_run(db, project_id=project.id, model_id=models[2].id)  # Baseline
 
@@ -221,22 +227,28 @@ def seed(db: Session) -> dict:
     for st in SEED_TRACES:
         p_clean, p_red = redact_text(st["prompt"])
         r_clean, r_red = redact_text(st["response"])
-        db.add(ProductionTrace(
-            id=str(uuid.uuid4()),
-            project_id=project.id,
-            model_name=st["model_name"],
-            prompt_redacted=p_clean,
-            response_redacted=r_clean,
-            expected_answer_hint=st["expected_answer_hint"],
-            flagged_reason=st["flagged_reason"],
-            redactions_applied=json.dumps(sorted(set(p_red + r_red))),
-            latency_ms=st["latency_ms"],
-            tokens_in=st["tokens_in"],
-            tokens_out=st["tokens_out"],
-        ))
+        db.add(
+            ProductionTrace(
+                id=str(uuid.uuid4()),
+                project_id=project.id,
+                model_name=st["model_name"],
+                prompt_redacted=p_clean,
+                response_redacted=r_clean,
+                expected_answer_hint=st["expected_answer_hint"],
+                flagged_reason=st["flagged_reason"],
+                redactions_applied=json.dumps(sorted(set(p_red + r_red))),
+                latency_ms=st["latency_ms"],
+                tokens_in=st["tokens_in"],
+                tokens_out=st["tokens_out"],
+            )
+        )
 
-    log(db, "seed.completed", entity=project.id,
-        detail=f"models={len(models)} cases={len(SAMPLE_CASES)} gate=1 traces={len(SEED_TRACES)}")
+    log(
+        db,
+        "seed.completed",
+        entity=project.id,
+        detail=f"models={len(models)} cases={len(SAMPLE_CASES)} gate=1 traces={len(SEED_TRACES)}",
+    )
     db.commit()
     return {
         "seeded": True,

@@ -1,6 +1,7 @@
 """Native Anthropic Messages API provider (/v1/messages).
 API key is read strictly from server-side environment variables.
 """
+
 import json
 import os
 import time
@@ -59,8 +60,7 @@ class AnthropicProvider(BaseProvider):
         blocks = data.get("content") or []
         texts = [b.get("text", "") for b in blocks if b.get("type") == "text"]
         tool_calls = [
-            {"tool": b.get("name", ""), "arguments": b.get("input", {})}
-            for b in blocks if b.get("type") == "tool_use"
+            {"tool": b.get("name", ""), "arguments": b.get("input", {})} for b in blocks if b.get("type") == "tool_use"
         ]
         text_out = "\n".join(t for t in texts if t).strip()
         if not text_out and tool_calls:

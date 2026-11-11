@@ -1,4 +1,5 @@
 """Evaluation run endpoints: execute suites concurrently against a model and persist evidence."""
+
 import json
 from datetime import datetime
 
@@ -70,8 +71,9 @@ def run_evaluation(body: RunRequest, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=list[RunOut])
-def list_runs(project_id: str | None = None, kind: str | None = None,
-              status: str | None = None, db: Session = Depends(get_db)):
+def list_runs(
+    project_id: str | None = None, kind: str | None = None, status: str | None = None, db: Session = Depends(get_db)
+):
     q = db.query(EvaluationRun)
     if project_id:
         q = q.filter(EvaluationRun.project_id == project_id)

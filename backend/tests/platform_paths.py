@@ -1,7 +1,7 @@
 """Cross-platform temporary paths shared by the backend test modules."""
-from pathlib import Path
-import tempfile
 
+import tempfile
+from pathlib import Path
 
 TEMP_DIR = Path(tempfile.gettempdir()) / "airs-lab-tests"
 TEMP_DIR.mkdir(parents=True, exist_ok=True)

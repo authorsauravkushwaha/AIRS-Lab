@@ -1,9 +1,9 @@
 // Main user journey: open the platform -> create a project -> run an evaluation -> inspect evidence -> export a report
-// Run with: npx playwright test (requires `npx playwright install chromium` once)
+// Run from frontend/: npm run test:e2e (requires `npx playwright install chromium` once)
 // The app serves single-origin on :8000 (uvicorn serving frontend/dist) or via Vite on :5173.
 import { expect, test } from '@playwright/test'
 
-const BASE = process.env.E2E_BASE ?? 'http://localhost:8000'
+const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:8000'
 
 test('main evaluation journey', async ({ page }) => {
   await page.goto(BASE)

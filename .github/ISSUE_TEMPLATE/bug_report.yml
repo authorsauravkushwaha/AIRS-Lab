@@ -1,0 +1,53 @@
+name: Bug report
+description: Report unexpected behavior or a crash in AEGIS AI LAB
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. **Do not include API keys,
+        tokens, or sensitive data** in this report — logs are redacted, but please
+        double-check before pasting.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Clear description of the bug.
+      placeholder: When I run a security suite with 3 repeats, the second repeat fails...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal reproduction steps, or a curl command / CLI invocation.
+      placeholder: |
+        1. `python scripts/setup_local.py && python run.py`
+        2. Create a project, register a mock model
+        3. Run evaluation with repeats=3
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, Node version, deployment method (local/Docker).
+      placeholder: |
+        - OS: Windows 11 / Ubuntu 24.04
+        - Python: 3.11.x
+        - Node: 20.x
+        - Method: local venv / docker compose
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      render: shell

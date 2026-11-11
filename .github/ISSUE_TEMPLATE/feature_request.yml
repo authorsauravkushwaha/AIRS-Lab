@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose an improvement or new capability for AEGIS AI LAB
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first, then the idea. Feature requests that map to a
+        concrete evaluation/governance need are easiest to prioritize.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: What are you trying to accomplish that the platform doesn't support today?
+      placeholder: I need to compare two models on a custom suite with paired significance testing...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Evaluation engine / graders
+        - Security lab / DLP
+        - Release gates & CLI
+        - Providers & integrations
+        - Frontend / UX
+        - Reports & evidence bundles
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

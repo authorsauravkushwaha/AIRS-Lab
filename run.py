@@ -3,6 +3,7 @@
 First run ``python scripts/setup_local.py`` to install dependencies and build
 the frontend, then run ``python run.py``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -10,7 +11,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parent
 VENV_PYTHON = ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
@@ -30,8 +30,14 @@ def main() -> int:
         return 1
 
     command = [
-        str(VENV_PYTHON), "-m", "uvicorn", "app.main:app",
-        "--host", args.host, "--port", str(args.port),
+        str(VENV_PYTHON),
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        args.host,
+        "--port",
+        str(args.port),
     ]
     print(f"AIRS Lab is starting at http://{args.host}:{args.port} (press Ctrl+C to stop)", flush=True)
     try:

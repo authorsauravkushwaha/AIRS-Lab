@@ -5,7 +5,7 @@ import { api } from '../api'
 import type { ModelConfig, Run, Suite } from '../types'
 import { Button, Card, EmptyState, ErrorMsg, Field, PageHeader, Ring, Select, StatusBadge } from '../components/ui'
 import { useToast } from '../components/Toast'
-import { fmtDateTime, fmtNum } from '../lib/format'
+import { fmtDateTime } from '../lib/format'
 
 export default function RunEval() {
   const toast = useToast()

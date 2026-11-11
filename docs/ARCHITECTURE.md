@@ -1,4 +1,4 @@
-# AEGIS AI LAB v2.0 — Architecture
+# AEGIS AI LAB — Architecture
 
 ## Overview
 Three tiers served from a single origin:

@@ -4,6 +4,7 @@ Serves the JSON API under /api/* and, when a built frontend is present
 (`frontend/dist`, or $AEGIS_STATIC_DIR), the single-page app at / — one
 origin, no proxy required.
 """
+
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -27,7 +28,7 @@ from app.routers import (
     traces,
 )
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = Path(os.environ.get("AEGIS_STATIC_DIR", REPO_ROOT / "frontend" / "dist"))
@@ -37,6 +38,7 @@ STATIC_DIR = Path(os.environ.get("AEGIS_STATIC_DIR", REPO_ROOT / "frontend" / "d
 async def lifespan(app: FastAPI):
     init_db()
     from app.seed import seed
+
     db = SessionLocal()
     try:
         seed(db)
@@ -52,11 +54,7 @@ app = FastAPI(
     description="Enterprise AI reliability, adversarial security, inference arbitrage, and governance laboratory.",
 )
 
-cors_origins = [
-    o.strip()
-    for o in os.environ.get("AEGIS_CORS_ORIGINS", "*").split(",")
-    if o.strip()
-]
+cors_origins = [o.strip() for o in os.environ.get("AEGIS_CORS_ORIGINS", "*").split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
