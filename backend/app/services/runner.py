@@ -3,11 +3,12 @@
 Supports configurable worker concurrency, content-addressed response caching,
 live token cost pricing, SHA-256 dataset fingerprinting, and Wilson 95% CIs.
 """
+
 import hashlib
 import json
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -25,7 +26,7 @@ from app.services.pricing import estimate_cost_usd
 def _percentile(sorted_vals: list[float], pct: float) -> float | None:
     if not sorted_vals:
         return None
-    idx = min(len(sorted_vals) - 1, max(0, int(round((pct / 100.0) * (len(sorted_vals) - 1)))))
+    idx = min(len(sorted_vals) - 1, max(0, round((pct / 100.0) * (len(sorted_vals) - 1))))
     return round(sorted_vals[idx], 1)
 
 
@@ -111,7 +112,7 @@ def execute_reliability_run(
         provider = get_provider(model)
     except ProviderError as e:
         run.status = "error"
-        run.finished_at = datetime.now(timezone.utc)
+        run.finished_at = datetime.now(UTC)
         run.summary = json.dumps({"error": str(e), "dataset_hash": ds_hash})
         db.commit()
         db.refresh(run)
@@ -165,43 +166,53 @@ def execute_reliability_run(
         if use_cache and not was_cached and chk.status != "ERROR" and case.category != "consistency":
             ck = _cache_key_for(model, case)
             if not db.get(ResponseCache, ck):
-                db.add(ResponseCache(
-                    cache_key=ck,
-                    provider=model.provider,
-                    model_id=model.model_id,
-                    response_json=json.dumps({
-                        "text": resp.text,
-                        "tokens_in": resp.tokens_in,
-                        "tokens_out": resp.tokens_out,
-                        "tool_calls": resp.tool_calls,
-                        "raw": resp.raw,
-                    }),
-                ))
-        db.add(EvaluationResult(
-            id=str(uuid.uuid4()),
-            run_id=run.id,
-            test_case_id=case.id,
-            status=chk.status,
-            method=chk.method,
-            score=chk.score,
-            response=resp.text,
-            evidence=json.dumps(chk.evidence),
-            latency_ms=resp.latency_ms,
-            ttft_ms=resp.ttft_ms,
-            tokens_in=resp.tokens_in,
-            tokens_out=resp.tokens_out,
-            est_cost_usd=cost,
-            cached=was_cached,
-        ))
+                db.add(
+                    ResponseCache(
+                        cache_key=ck,
+                        provider=model.provider,
+                        model_id=model.model_id,
+                        response_json=json.dumps(
+                            {
+                                "text": resp.text,
+                                "tokens_in": resp.tokens_in,
+                                "tokens_out": resp.tokens_out,
+                                "tool_calls": resp.tool_calls,
+                                "raw": resp.raw,
+                            }
+                        ),
+                    )
+                )
+        db.add(
+            EvaluationResult(
+                id=str(uuid.uuid4()),
+                run_id=run.id,
+                test_case_id=case.id,
+                status=chk.status,
+                method=chk.method,
+                score=chk.score,
+                response=resp.text,
+                evidence=json.dumps(chk.evidence),
+                latency_ms=resp.latency_ms,
+                ttft_ms=resp.ttft_ms,
+                tokens_in=resp.tokens_in,
+                tokens_out=resp.tokens_out,
+                est_cost_usd=cost,
+                cached=was_cached,
+            )
+        )
     db.commit()
 
     results = db.query(EvaluationResult).filter(EvaluationResult.run_id == run.id).all()
     summary = summary_for(results, dataset_hash=ds_hash)
     run.status = "completed"
-    run.finished_at = datetime.now(timezone.utc)
+    run.finished_at = datetime.now(UTC)
     run.summary = json.dumps(summary)
-    log(db, "evaluation.completed", entity=run.id,
-        detail=f"model={model.name} suite={suite.name} pass_rate={summary['pass_rate']} hash={ds_hash[:12]}")
+    log(
+        db,
+        "evaluation.completed",
+        entity=run.id,
+        detail=f"model={model.name} suite={suite.name} pass_rate={summary['pass_rate']} hash={ds_hash[:12]}",
+    )
     db.commit()
     db.refresh(run)
     return run
@@ -232,7 +243,7 @@ def execute_security_run(db: Session, *, project_id: str, model_id: str) -> tupl
         provider = get_provider(model)
     except ProviderError as e:
         run.status = "error"
-        run.finished_at = datetime.now(timezone.utc)
+        run.finished_at = datetime.now(UTC)
         run.summary = json.dumps({"error": str(e)})
         db.commit()
         db.refresh(run)
@@ -243,38 +254,46 @@ def execute_security_run(db: Session, *, project_id: str, model_id: str) -> tupl
     for f in findings:
         if f.owasp_id:
             owasp_counts[f.owasp_id] = owasp_counts.get(f.owasp_id, 0) + 1
-        db.add(SecurityFinding(
-            id=str(uuid.uuid4()),
-            run_id=run.id,
-            test_name=f.test_name,
-            category=f.category,
-            severity=f.severity,
-            owasp_id=f.owasp_id,
-            mitre_atlas_id=f.mitre_atlas_id,
-            cwe_id=f.cwe_id,
-            test_input=f.test_input,
-            model_response=f.model_response,
-            expected_behavior=f.expected_behavior,
-            actual_behavior=f.actual_behavior,
-            outcome=f.outcome,
-            evidence=json.dumps(f.evidence),
-            mitigation=f.mitigation,
-        ))
+        db.add(
+            SecurityFinding(
+                id=str(uuid.uuid4()),
+                run_id=run.id,
+                test_name=f.test_name,
+                category=f.category,
+                severity=f.severity,
+                owasp_id=f.owasp_id,
+                mitre_atlas_id=f.mitre_atlas_id,
+                cwe_id=f.cwe_id,
+                test_input=f.test_input,
+                model_response=f.model_response,
+                expected_behavior=f.expected_behavior,
+                actual_behavior=f.actual_behavior,
+                outcome=f.outcome,
+                evidence=json.dumps(f.evidence),
+                mitigation=f.mitigation,
+            )
+        )
     run.status = "completed"
-    run.finished_at = datetime.now(timezone.utc)
-    sev_counts = {s: 0 for s in security_lab.SEVERITY_ORDER}
+    run.finished_at = datetime.now(UTC)
+    sev_counts = dict.fromkeys(security_lab.SEVERITY_ORDER, 0)
     for f in findings:
         sev_counts[f.severity] = sev_counts.get(f.severity, 0) + 1
     failures = sum(1 for f in findings if f.outcome == "fail")
-    run.summary = json.dumps({
-        "findings": len(findings),
-        "by_severity": sev_counts,
-        "by_owasp": owasp_counts,
-        "failures": failures,
-        "evaluator_version": EVALUATOR_VERSION,
-    })
-    log(db, "security.completed", entity=run.id,
-        detail=f"model={model.name} findings={len(findings)} failures={failures}")
+    run.summary = json.dumps(
+        {
+            "findings": len(findings),
+            "by_severity": sev_counts,
+            "by_owasp": owasp_counts,
+            "failures": failures,
+            "evaluator_version": EVALUATOR_VERSION,
+        }
+    )
+    log(
+        db,
+        "security.completed",
+        entity=run.id,
+        detail=f"model={model.name} findings={len(findings)} failures={failures}",
+    )
     db.commit()
     db.refresh(run)
     return run, len(findings)

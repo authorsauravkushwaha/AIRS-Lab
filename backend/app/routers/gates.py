@@ -1,8 +1,9 @@
 """Governance Release Gates: automated pre-deployment sign-off & cryptographic certificates."""
+
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -103,12 +104,17 @@ def evaluate_gate_for_model(db: Session, gate: ReleaseGate, model: ModelConfig, 
         rel_q = rel_q.filter(EvaluationRun.suite_id == gate.suite_id)
     rel_run = rel_q.order_by(EvaluationRun.started_at.desc()).first()
 
-    sec_run = db.query(EvaluationRun).filter(
-        EvaluationRun.project_id == gate.project_id,
-        EvaluationRun.model_id == model.id,
-        EvaluationRun.kind == "security",
-        EvaluationRun.status == "completed",
-    ).order_by(EvaluationRun.started_at.desc()).first()
+    sec_run = (
+        db.query(EvaluationRun)
+        .filter(
+            EvaluationRun.project_id == gate.project_id,
+            EvaluationRun.model_id == model.id,
+            EvaluationRun.kind == "security",
+            EvaluationRun.status == "completed",
+        )
+        .order_by(EvaluationRun.started_at.desc())
+        .first()
+    )
 
     blocking_reasons: list[str] = []
     checks: list[dict] = []
@@ -123,23 +129,27 @@ def evaluate_gate_for_model(db: Session, gate: ReleaseGate, model: ModelConfig, 
         pass_rate = rel_summary.get("pass_rate")
         avg_lat = rel_summary.get("avg_latency_ms")
         ok_pass = pass_rate is not None and pass_rate >= gate.min_pass_rate
-        checks.append({
-            "check": "min_pass_rate",
-            "expected": f">= {gate.min_pass_rate}%",
-            "actual": f"{pass_rate}%" if pass_rate is not None else "N/A",
-            "passed": ok_pass,
-        })
+        checks.append(
+            {
+                "check": "min_pass_rate",
+                "expected": f">= {gate.min_pass_rate}%",
+                "actual": f"{pass_rate}%" if pass_rate is not None else "N/A",
+                "passed": ok_pass,
+            }
+        )
         if not ok_pass:
             blocking_reasons.append(f"Pass rate {pass_rate}% is below gate threshold {gate.min_pass_rate}%.")
 
         if gate.max_avg_latency_ms is not None and avg_lat is not None:
             ok_lat = avg_lat <= gate.max_avg_latency_ms
-            checks.append({
-                "check": "max_avg_latency_ms",
-                "expected": f"<= {gate.max_avg_latency_ms} ms",
-                "actual": f"{avg_lat} ms",
-                "passed": ok_lat,
-            })
+            checks.append(
+                {
+                    "check": "max_avg_latency_ms",
+                    "expected": f"<= {gate.max_avg_latency_ms} ms",
+                    "actual": f"{avg_lat} ms",
+                    "passed": ok_lat,
+                }
+            )
             if not ok_lat:
                 blocking_reasons.append(f"Average latency {avg_lat} ms exceeds limit {gate.max_avg_latency_ms} ms.")
 
@@ -151,44 +161,54 @@ def evaluate_gate_for_model(db: Session, gate: ReleaseGate, model: ModelConfig, 
         sec_findings = db.query(SecurityFinding).filter(SecurityFinding.run_id == sec_run.id).all()
         # Exclude static policy-engine self-test fixtures (which test the policy rules, not the model)
         model_findings = [
-            f for f in sec_findings
-            if not f.test_name.startswith("Tool policy gate:")
-            and not f.test_name.startswith("Tool call simulation:")
+            f
+            for f in sec_findings
+            if not f.test_name.startswith("Tool policy gate:") and not f.test_name.startswith("Tool call simulation:")
         ]
         crit_fails = sum(1 for f in model_findings if f.outcome == "fail" and f.severity == "critical")
         high_fails = sum(1 for f in model_findings if f.outcome == "fail" and f.severity == "high")
         ok_crit = crit_fails <= gate.max_critical_findings
         ok_high = high_fails <= gate.max_high_findings
-        checks.append({
-            "check": "max_critical_findings",
-            "expected": f"<= {gate.max_critical_findings}",
-            "actual": str(crit_fails),
-            "passed": ok_crit,
-        })
-        checks.append({
-            "check": "max_high_findings",
-            "expected": f"<= {gate.max_high_findings}",
-            "actual": str(high_fails),
-            "passed": ok_high,
-        })
+        checks.append(
+            {
+                "check": "max_critical_findings",
+                "expected": f"<= {gate.max_critical_findings}",
+                "actual": str(crit_fails),
+                "passed": ok_crit,
+            }
+        )
+        checks.append(
+            {
+                "check": "max_high_findings",
+                "expected": f"<= {gate.max_high_findings}",
+                "actual": str(high_fails),
+                "passed": ok_high,
+            }
+        )
         if not ok_crit:
-            blocking_reasons.append(f"{crit_fails} critical security failure(s) exceed maximum {gate.max_critical_findings}.")
+            blocking_reasons.append(
+                f"{crit_fails} critical security failure(s) exceed maximum {gate.max_critical_findings}."
+            )
         if not ok_high:
-            blocking_reasons.append(f"{high_fails} high-severity security failure(s) exceed maximum {gate.max_high_findings}.")
+            blocking_reasons.append(
+                f"{high_fails} high-severity security failure(s) exceed maximum {gate.max_high_findings}."
+            )
 
     audit_state = verify_audit_chain(db)
     if gate.require_audit_integrity:
-        checks.append({
-            "check": "audit_chain_integrity",
-            "expected": "SHA-256 chain valid",
-            "actual": "valid" if audit_state["valid"] else "TAMPERED",
-            "passed": audit_state["valid"],
-        })
+        checks.append(
+            {
+                "check": "audit_chain_integrity",
+                "expected": "SHA-256 chain valid",
+                "actual": "valid" if audit_state["valid"] else "TAMPERED",
+                "passed": audit_state["valid"],
+            }
+        )
         if not audit_state["valid"]:
             blocking_reasons.append("Workspace cryptographic audit trail failed SHA-256 verification.")
 
     verdict = "approved" if not blocking_reasons else "blocked"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     cert_body = {
         "gate_id": gate.id,
         "gate_name": gate.name,

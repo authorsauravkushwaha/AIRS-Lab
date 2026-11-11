@@ -5,9 +5,10 @@ Every workspace mutation or evaluation run appends an AuditEvent whose
 and canonical UTC timestamp. Modifying or deleting any historical row breaks
 the chain and is caught by `verify_audit_chain()`.
 """
+
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +17,7 @@ from app.models import AuditEvent
 
 def _canonical_ts(dt: datetime) -> str:
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        dt = dt.astimezone(UTC).replace(tzinfo=None)
     return dt.isoformat(timespec="microseconds")
 
 
@@ -30,7 +31,7 @@ def log(db: Session, event_type: str, entity: str = "", detail: str = "") -> Aud
     last = db.query(AuditEvent).order_by(AuditEvent.seq.desc(), AuditEvent.created_at.desc()).first()
     seq = (last.seq + 1) if (last and last.seq is not None) else 1
     prev_hash = (last.entry_hash or "GENESIS") if last else "GENESIS"
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     ent = (entity or "")[:100]
     det = (detail or "")[:2000]
     ts = _canonical_ts(now)

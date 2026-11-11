@@ -1,4 +1,5 @@
 """Model configuration endpoints — providers are referenced by env-var NAME only."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException

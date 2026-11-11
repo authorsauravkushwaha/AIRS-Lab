@@ -25,5 +25,8 @@ export default defineConfig({
     setupFiles: './tests/setup.ts',
     environment: 'jsdom',
     globals: true,
+    // Unit tests live in tests/; e2e/ is Playwright's territory (playwright.config.ts).
+    include: ['tests/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
 })

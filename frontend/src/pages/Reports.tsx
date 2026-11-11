@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Archive, FileJson, FileText, FileSpreadsheet, Download, Plus, Trash2, FileBarChart, Fingerprint } from 'lucide-react'
 import { api } from '../api'
 import type { ReportItem, Run } from '../types'
-import { Button, Card, EmptyState, ErrorMsg, Field, Input, PageHeader, Select } from '../components/ui'
+import { Card, EmptyState, ErrorMsg, Field, Input, PageHeader, Select } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { fmtDateTime, downloadPath } from '../lib/format'
 

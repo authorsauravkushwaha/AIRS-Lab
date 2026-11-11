@@ -1,4 +1,5 @@
 """Surface pytest failures as GitHub Actions annotations from a JUnit XML report."""
+
 from __future__ import annotations
 
 import sys

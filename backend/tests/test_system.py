@@ -1,4 +1,5 @@
 """Tests for the system introspection, patch and delete endpoints."""
+
 import os
 import sys
 
@@ -6,14 +7,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from fastapi.testclient import TestClient
-
 from platform_paths import TEMP_DIR, database_url, reset_database
 
 os.environ["AEGIS_REPORT_DIR"] = str(TEMP_DIR / "reports")
 os.environ["AEGIS_DATABASE_URL"] = database_url("system.db")
 reset_database("system.db")
 
-from app.main import app  # noqa: E402
+from app.main import app
 
 
 @pytest.fixture()
@@ -25,12 +25,20 @@ def client():
 @pytest.fixture()
 def workspace(client):
     p = client.post("/api/projects", json={"name": "Sys", "description": "d"}).json()
-    m = client.post("/api/models", json={
-        "project_id": p["id"], "name": "Mock", "provider": "mock", "model_id": "mock-v1"}).json()
+    m = client.post(
+        "/api/models", json={"project_id": p["id"], "name": "Mock", "provider": "mock", "model_id": "mock-v1"}
+    ).json()
     s = client.post("/api/test-suites", json={"project_id": p["id"], "name": "S"}).json()
-    client.post("/api/test-cases", json={
-        "suite_id": s["id"], "name": "C", "category": "factual_accuracy",
-        "prompt": "What is 2+2?", "reference_answer": "4"})
+    client.post(
+        "/api/test-cases",
+        json={
+            "suite_id": s["id"],
+            "name": "C",
+            "category": "factual_accuracy",
+            "prompt": "What is 2+2?",
+            "reference_answer": "4",
+        },
+    )
     return p, m, s
 
 
@@ -45,7 +53,7 @@ def test_system_config_is_non_secret(client, workspace):
 
 
 def test_project_list_includes_counts(client, workspace):
-    p, m, s = workspace
+    p, _m, _s = workspace
     projects = client.get("/api/projects").json()
     ours = next(x for x in projects if x["id"] == p["id"])
     assert ours["model_count"] == 1 and ours["suite_count"] == 1
@@ -82,8 +90,9 @@ def test_suite_patch_renames(client, workspace):
 
 def test_run_delete_cascades_results(client, workspace):
     p, m, s = workspace
-    run = client.post("/api/evaluations/run", json={
-        "project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}).json()
+    run = client.post(
+        "/api/evaluations/run", json={"project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}
+    ).json()
     assert len(client.get(f"/api/evaluations/{run['id']}/results").json()) == 1
     assert client.delete(f"/api/evaluations/{run['id']}").status_code == 204
     assert client.get(f"/api/evaluations/{run['id']}/results").status_code == 404
@@ -91,8 +100,9 @@ def test_run_delete_cascades_results(client, workspace):
 
 def test_report_delete_removes_row_and_file(client, workspace):
     p, m, s = workspace
-    run = client.post("/api/evaluations/run", json={
-        "project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}).json()
+    run = client.post(
+        "/api/evaluations/run", json={"project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}
+    ).json()
     rep = client.post("/api/reports", json={"project_id": p["id"], "run_id": run["id"], "format": "json"}).json()
     reports = client.get("/api/reports").json()
     assert any(r["id"] == rep["id"] for r in reports)
@@ -101,7 +111,8 @@ def test_report_delete_removes_row_and_file(client, workspace):
 
 
 def test_audit_trail_records_activity(client, workspace):
-    workspace  # creation happened in the fixture
+    # The workspace fixture creates the project/model/suite/case events.
+    assert workspace is not None
     events = client.get("/api/system/audit").json()
     types = {e["event_type"] for e in events}
     assert {"project.created", "model.created", "suite.created", "case.created", "evaluation.completed"} <= types

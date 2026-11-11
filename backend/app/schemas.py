@@ -1,4 +1,5 @@
 """Pydantic request/response schemas for AEGIS AI LAB v2.0."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -26,7 +27,7 @@ class ModelConfigIn(BaseModel):
     provider: str = Field(pattern="^(mock|openai_compat|anthropic|ollama|custom_webhook)$")
     model_id: str = Field(min_length=1, max_length=200)
     base_url: str = ""
-    api_key_env: str = ""   # env var NAME only — never a raw key
+    api_key_env: str = ""  # env var NAME only — never a raw key
     system_prompt: str = ""
     temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     max_tokens: int = Field(default=1024, ge=1, le=65536)

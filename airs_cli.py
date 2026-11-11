@@ -6,6 +6,7 @@ Examples:
   python -m airs_cli gate --pack family_office_exec --model mock-atlas-baseline --fail-under 85 --security-gate
   python -m airs_cli verify-bundle ./evidence.airsbundle.zip
 """
+
 import argparse
 import hashlib
 import json
@@ -57,7 +58,8 @@ def cmd_verify_bundle(args: argparse.Namespace) -> int:
                 actual_sha = hashlib.sha256(zf.read(fname)).hexdigest()
                 if actual_sha != expected_sha:
                     print(
-                        f"[TAMPERED] Checksum mismatch for '{fname}': expected {expected_sha[:16]}…, got {actual_sha[:16]}…",
+                        f"[TAMPERED] Checksum mismatch for '{fname}': "
+                        f"expected {expected_sha[:16]}…, got {actual_sha[:16]}…",
                         file=sys.stderr,
                     )
                     return 1
@@ -149,7 +151,8 @@ def cmd_gate(args: argparse.Namespace) -> int:
             db.commit()
 
             if not args.security_gate:
-                # Create a baseline passing security placeholder check by only gating reliability when --security-gate omitted
+                # When --security-gate is omitted, run a baseline security check
+                # so the gate still has security evidence alongside reliability.
                 execute_security_run(db, project_id=proj.id, model_id=model.id)
 
             verdict_out = evaluate_gate_for_model(db, gate, model, execute_fresh=False)
@@ -160,8 +163,13 @@ def cmd_gate(args: argparse.Namespace) -> int:
             print(f"  Model           : {model.name}")
             print(f"  Domain Pack     : {suite_out.name} ({suite_out.case_count} cases)")
             print(f"  Dataset SHA-256 : {rel_run.dataset_hash}")
-            print(f"  Pass Rate       : {rel_summary.get('pass_rate')}% (Wilson 95% CI: {rel_summary.get('wilson_95_ci')})")
-            print(f"  Latency Avg/P95 : {rel_summary.get('avg_latency_ms')} ms / {rel_summary.get('p95_latency_ms')} ms")
+            print(
+                f"  Pass Rate       : {rel_summary.get('pass_rate')}% "
+                f"(Wilson 95% CI: {rel_summary.get('wilson_95_ci')})"
+            )
+            print(
+                f"  Latency Avg/P95 : {rel_summary.get('avg_latency_ms')} ms / {rel_summary.get('p95_latency_ms')} ms"
+            )
             print(f"  Est. Run Cost   : ${rel_summary.get('est_cost_usd', 0):.8f}")
             print(f"  Gate Verdict    : {verdict_out['last_verdict'].upper()}")
             print(f"  Cert Signature  : {cert.get('certificate_sha256')}")
@@ -175,7 +183,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
                 Path(args.json_out).write_text(json.dumps(cert, indent=2), encoding="utf-8")
             if args.bundle_out:
                 rep = create_report(
-                    ReportRequest(project_id=proj.id, run_id=rel_run.id, format="bundle", title=f"CI Gate — {args.pack}"),
+                    ReportRequest(
+                        project_id=proj.id, run_id=rel_run.id, format="bundle", title=f"CI Gate — {args.pack}"
+                    ),
                     db=db,
                 )
                 src = Path(os.environ["AEGIS_REPORT_DIR"]) / rep["file"]
@@ -205,7 +215,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_gate = sub.add_parser("gate", help="Execute a reliability + security CI release gate")
     p_gate.add_argument("--pack", default="quant_finance_10k", help="Domain pack ID (see `airs packs`)")
-    p_gate.add_argument("--provider", default="mock", choices=["mock", "openai_compat", "anthropic", "ollama", "custom_webhook"])
+    p_gate.add_argument(
+        "--provider", default="mock", choices=["mock", "openai_compat", "anthropic", "ollama", "custom_webhook"]
+    )
     p_gate.add_argument("--model", default="mock-atlas-guarded", help="Model identifier")
     p_gate.add_argument("--base-url", default="", help="Optional endpoint base URL")
     p_gate.add_argument("--api-key-env", default="", help="Server env var name holding provider API key")

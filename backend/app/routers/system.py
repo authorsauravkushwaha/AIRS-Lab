@@ -1,4 +1,5 @@
 """Non-secret runtime introspection & cryptographic audit-chain verifier."""
+
 import os
 from pathlib import Path
 
@@ -21,7 +22,7 @@ from app.services.audit import log, verify_audit_chain
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 
 @router.get("/config")

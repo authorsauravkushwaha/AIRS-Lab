@@ -2,6 +2,7 @@
 
 Run from the repository root with: python scripts/setup_local.py
 """
+
 from __future__ import annotations
 
 import os
@@ -10,7 +11,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 VENV = ROOT / ".venv"
@@ -31,14 +31,14 @@ def run_npm(npm: str, *args: str) -> None:
 
 
 def main() -> int:
-    if sys.version_info < (3, 11):
+    if sys.version_info < (3, 11):  # noqa: UP036 — must run on older Pythons to report this
         print("AIRS Lab requires Python 3.11 or newer.", file=sys.stderr)
         return 1
 
     npm = shutil.which("npm")
     node = shutil.which("node")
     if not npm or not node:
-        print("Node.js 22.22.2+ (including npm) is required to build the web interface.", file=sys.stderr)
+        print("Node.js 20+ (including npm) is required to build the web interface.", file=sys.stderr)
         print("Install Node.js, then rerun: python scripts/setup_local.py", file=sys.stderr)
         return 1
     version_text = "unknown"
@@ -48,8 +48,8 @@ def main() -> int:
         node_version = tuple(map(int, version_match.groups())) if version_match else (0, 0, 0)
     except (OSError, subprocess.SubprocessError):
         node_version = (0, 0, 0)
-    if node_version < (22, 22, 2):
-        print(f"Node.js 22.22.2+ is required (found {version_text!r}).", file=sys.stderr)
+    if node_version < (20, 0, 0):
+        print(f"Node.js 20+ is required (found {version_text!r}).", file=sys.stderr)
         return 1
 
     venv_python = VENV / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
@@ -57,11 +57,18 @@ def main() -> int:
         run([sys.executable, "-m", "venv", str(VENV)])
 
     run([str(venv_python), "-m", "pip", "install", "--upgrade", "pip"])
-    run([
-        str(venv_python), "-m", "pip", "install",
-        "-r", str(ROOT / "requirements.txt"),
-        "-r", str(ROOT / "backend" / "requirements.txt"),
-    ])
+    run(
+        [
+            str(venv_python),
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            str(ROOT / "requirements.txt"),
+            "-r",
+            str(ROOT / "backend" / "requirements.txt"),
+        ]
+    )
     run_npm(npm, "ci")
     run_npm(npm, "run", "build")
 

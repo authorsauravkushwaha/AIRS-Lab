@@ -1,4 +1,5 @@
 """Dashboard overview, paired statistical model comparison & inference arbitrage ROI."""
+
 import json
 from collections import Counter
 
@@ -34,8 +35,9 @@ def overview(project_id: str | None = None, db: Session = Depends(get_db)):
 
     results_q = db.query(EvaluationResult)
     if project_id:
-        results_q = results_q.join(EvaluationRun, EvaluationResult.run_id == EvaluationRun.id) \
-                             .filter(EvaluationRun.project_id == project_id)
+        results_q = results_q.join(EvaluationRun, EvaluationResult.run_id == EvaluationRun.id).filter(
+            EvaluationRun.project_id == project_id
+        )
     results = results_q.all()
 
     counts = Counter(r.status for r in results)
@@ -43,19 +45,24 @@ def overview(project_id: str | None = None, db: Session = Depends(get_db)):
 
     findings_q = db.query(SecurityFinding)
     if project_id:
-        findings_q = findings_q.join(EvaluationRun, SecurityFinding.run_id == EvaluationRun.id) \
-                               .filter(EvaluationRun.project_id == project_id)
+        findings_q = findings_q.join(EvaluationRun, SecurityFinding.run_id == EvaluationRun.id).filter(
+            EvaluationRun.project_id == project_id
+        )
     all_findings = findings_q.all()
     sev = Counter(f.severity for f in all_findings)
 
     if project_id:
-        total_cases = db.query(TestCase).join(TestSuite, TestCase.suite_id == TestSuite.id) \
-                        .filter(TestSuite.project_id == project_id).count()
+        total_cases = (
+            db.query(TestCase)
+            .join(TestSuite, TestCase.suite_id == TestSuite.id)
+            .filter(TestSuite.project_id == project_id)
+            .count()
+        )
     else:
         total_cases = db.query(TestCase).count()
 
     lat = sorted(r.latency_ms for r in results if r.latency_ms)
-    p95_idx = min(len(lat) - 1, int(round(0.95 * (len(lat) - 1)))) if lat else 0
+    p95_idx = min(len(lat) - 1, round(0.95 * (len(lat) - 1))) if lat else 0
     p95_lat = round(lat[p95_idx], 1) if lat else None
 
     model_names = {m.id: m.name for m in db.query(ModelConfig).all()}
@@ -68,20 +75,22 @@ def overview(project_id: str | None = None, db: Session = Depends(get_db)):
         summary = json.loads(r.summary or "{}")
         if r.kind == "security":
             continue
-        trend.append({
-            "id": r.id,
-            "label": r.started_at.strftime("%d %b %H:%M") if r.started_at else r.id[:8],
-            "pass_rate": summary.get("pass_rate"),
-        })
+        trend.append(
+            {
+                "id": r.id,
+                "label": r.started_at.strftime("%d %b %H:%M") if r.started_at else r.id[:8],
+                "pass_rate": summary.get("pass_rate"),
+            }
+        )
 
     case_meta = {c.id: c for c in db.query(TestCase).all()}
     cat_total: Counter = Counter()
     cat_pass: Counter = Counter()
-    for r in results:
-        case = case_meta.get(r.test_case_id)
+    for res in results:
+        case = case_meta.get(res.test_case_id)
         category = case.category if case else "unknown"
         cat_total[category] += 1
-        if r.status == "PASS":
+        if res.status == "PASS":
             cat_pass[category] += 1
     category_breakdown = [
         {
@@ -164,13 +173,12 @@ def compare(body: CompareRequest, db: Session = Depends(get_db)):
             q = q.filter(EvaluationRun.suite_id == body.suite_id)
         runs = q.order_by(EvaluationRun.started_at.desc()).limit(5).all()
         results = (
-            db.query(EvaluationResult).filter(EvaluationResult.run_id.in_([r.id for r in runs])).all()
-            if runs else []
+            db.query(EvaluationResult).filter(EvaluationResult.run_id.in_([r.id for r in runs])).all() if runs else []
         )
         counts = Counter(r.status for r in results)
         done = counts["PASS"] + counts["FAIL"] + counts["UNCERTAIN"]
         lat = sorted(r.latency_ms for r in results if r.latency_ms)
-        p95_idx = min(len(lat) - 1, int(round(0.95 * (len(lat) - 1)))) if lat else 0
+        p95_idx = min(len(lat) - 1, round(0.95 * (len(lat) - 1))) if lat else 0
         total_cost = sum(r.est_cost_usd for r in results)
         avg_cost_per_call = (total_cost / len(results)) if results else 0.0
         cppt = (total_cost / counts["PASS"]) if counts["PASS"] > 0 and total_cost > 0 else None

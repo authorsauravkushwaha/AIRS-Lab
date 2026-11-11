@@ -1,11 +1,12 @@
 """Project endpoints — the top-level workspace container."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import ModelConfig, Project, TestCase, TestSuite, EvaluationRun
+from app.models import EvaluationRun, ModelConfig, Project, TestCase, TestSuite
 from app.schemas import ProjectIn, ProjectOut, ProjectUpdate
 from app.services.audit import log
 
@@ -14,12 +15,22 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 def _out(db: Session, p: Project) -> ProjectOut:
     suite_ids = [s.id for s in db.query(TestSuite.id).filter(TestSuite.project_id == p.id)]
-    case_count = db.query(TestCase).join(TestSuite, TestCase.suite_id == TestSuite.id) \
-                    .filter(TestSuite.project_id == p.id).count() if suite_ids else 0
+    case_count = (
+        db.query(TestCase)
+        .join(TestSuite, TestCase.suite_id == TestSuite.id)
+        .filter(TestSuite.project_id == p.id)
+        .count()
+        if suite_ids
+        else 0
+    )
     return ProjectOut(
-        id=p.id, name=p.name, description=p.description, created_at=p.created_at,
+        id=p.id,
+        name=p.name,
+        description=p.description,
+        created_at=p.created_at,
         model_count=db.query(ModelConfig).filter(ModelConfig.project_id == p.id).count(),
-        suite_count=len(suite_ids), case_count=case_count,
+        suite_count=len(suite_ids),
+        case_count=case_count,
         run_count=db.query(EvaluationRun).filter(EvaluationRun.project_id == p.id).count(),
     )
 

@@ -5,14 +5,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from fastapi.testclient import TestClient
-
 from platform_paths import TEMP_DIR, database_url, reset_database
 
 os.environ["AEGIS_REPORT_DIR"] = str(TEMP_DIR / "reports")
 os.environ["AEGIS_DATABASE_URL"] = database_url("api.db")
 reset_database("api.db")
 
-from app.main import app  # noqa: E402
+from app.main import app
 
 
 @pytest.fixture()
@@ -27,9 +26,15 @@ def test_health(client):
 
 def test_project_and_model_flow(client):
     p = client.post("/api/projects", json={"name": "T", "description": ""}).json()
-    m = client.post("/api/models", json={
-        "project_id": p["id"], "name": "Mock", "provider": "mock", "model_id": "mock-v1",
-    }).json()
+    m = client.post(
+        "/api/models",
+        json={
+            "project_id": p["id"],
+            "name": "Mock",
+            "provider": "mock",
+            "model_id": "mock-v1",
+        },
+    ).json()
     assert m["provider"] == "mock"
     conn = client.post(f"/api/models/{m['id']}/test-connection").json()
     assert conn["ok"] is True
@@ -38,9 +43,15 @@ def test_project_and_model_flow(client):
 def test_case_crud_duplicate_search(client):
     p = client.post("/api/projects", json={"name": "P2"}).json()
     s = client.post("/api/test-suites", json={"project_id": p["id"], "name": "S"}).json()
-    c = client.post("/api/test-cases", json={
-        "suite_id": s["id"], "name": "Factual Q", "category": "factual_accuracy", "prompt": "2+2?",
-    }).json()
+    c = client.post(
+        "/api/test-cases",
+        json={
+            "suite_id": s["id"],
+            "name": "Factual Q",
+            "category": "factual_accuracy",
+            "prompt": "2+2?",
+        },
+    ).json()
     assert c["severity"] == "medium"
     dup = client.post(f"/api/test-cases/{c['id']}/duplicate").json()
     assert dup["name"].endswith("(copy)")
@@ -51,19 +62,37 @@ def test_case_crud_duplicate_search(client):
 def test_case_validation_rejects_bad_severity(client):
     p = client.post("/api/projects", json={"name": "P3"}).json()
     s = client.post("/api/test-suites", json={"project_id": p["id"], "name": "S"}).json()
-    r = client.post("/api/test-cases", json={
-        "suite_id": s["id"], "name": "x", "prompt": "x", "severity": "bogus",
-    })
+    r = client.post(
+        "/api/test-cases",
+        json={
+            "suite_id": s["id"],
+            "name": "x",
+            "prompt": "x",
+            "severity": "bogus",
+        },
+    )
     assert r.status_code == 422
 
 
 def test_dashboard_and_report(client):
     p = client.post("/api/projects", json={"name": "Dash"}).json()
-    m = client.post("/api/models", json={"project_id": p["id"], "name": "M", "provider": "mock", "model_id": "mock-v1"}).json()
+    m = client.post(
+        "/api/models", json={"project_id": p["id"], "name": "M", "provider": "mock", "model_id": "mock-v1"}
+    ).json()
     s = client.post("/api/test-suites", json={"project_id": p["id"], "name": "S"}).json()
-    client.post("/api/test-cases", json={"suite_id": s["id"], "name": "C", "category": "factual_accuracy",
-                                         "prompt": "What is 2+2?", "reference_answer": "4"})
-    run = client.post("/api/evaluations/run", json={"project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}).json()
+    client.post(
+        "/api/test-cases",
+        json={
+            "suite_id": s["id"],
+            "name": "C",
+            "category": "factual_accuracy",
+            "prompt": "What is 2+2?",
+            "reference_answer": "4",
+        },
+    )
+    run = client.post(
+        "/api/evaluations/run", json={"project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}
+    ).json()
     ov = client.get("/api/dashboard/overview", params={"project_id": p["id"]}).json()
     assert ov["total_runs"] >= 1 and ov["pass_rate"] == 100.0
     for fmt in ["json", "csv", "pdf"]:

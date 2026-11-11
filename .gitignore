@@ -1,17 +1,43 @@
-__pycache__/
-.pytest_cache/
-.venv/
-*.sqlite3
-.env
-site/
+# AEGIS AI LAB — repository hygiene
 
-# AEGIS AI LAB
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .venv/
+*.egg-info/
+
+# Node / frontend
 node_modules/
 frontend/dist/
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Environment & secrets — never commit
 .env
+.env.*
+!.env.example
+
+# Local databases
 *.db
+*.sqlite3
 aegis.db
+airs.sqlite3
+
+# Generated runtime artifacts
+backend/reports_out/
+reports_out/
+site/
 *.airsbundle.zip
-__pycache__/
-.pytest_cache/
+pytest-*.xml
+coverage/
+.coverage
+htmlcov/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

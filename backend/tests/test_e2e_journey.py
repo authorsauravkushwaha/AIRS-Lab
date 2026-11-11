@@ -1,4 +1,5 @@
 """End-to-end main journey over HTTP (Playwright spec in /e2e covers the browser path)."""
+
 import os
 import sys
 
@@ -6,14 +7,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from fastapi.testclient import TestClient
-
 from platform_paths import TEMP_DIR, database_url, reset_database
 
 os.environ["AEGIS_REPORT_DIR"] = str(TEMP_DIR / "reports")
 os.environ["AEGIS_DATABASE_URL"] = database_url("e2e.db")
 reset_database("e2e.db")
 
-from app.main import app  # noqa: E402
+from app.main import app
 
 
 @pytest.fixture()
@@ -26,16 +26,36 @@ def test_main_journey(client):
     # 1. create project
     p = client.post("/api/projects", json={"name": "Journey", "description": "e2e"}).json()
     # 2. mock model
-    m = client.post("/api/models", json={"project_id": p["id"], "name": "Mock", "provider": "mock", "model_id": "mock-v1"}).json()
+    m = client.post(
+        "/api/models", json={"project_id": p["id"], "name": "Mock", "provider": "mock", "model_id": "mock-v1"}
+    ).json()
     assert client.post(f"/api/models/{m['id']}/test-connection").json()["ok"]
     # 3. suite + cases
     s = client.post("/api/test-suites", json={"project_id": p["id"], "name": "Journey Suite"}).json()
-    client.post("/api/test-cases", json={"suite_id": s["id"], "name": "C1", "category": "factual_accuracy",
-                                         "prompt": "What is 2+2?", "reference_answer": "4"})
-    client.post("/api/test-cases", json={"suite_id": s["id"], "name": "C2", "category": "factual_accuracy",
-                                         "prompt": "What is the capital of France?", "reference_answer": "Paris"})
+    client.post(
+        "/api/test-cases",
+        json={
+            "suite_id": s["id"],
+            "name": "C1",
+            "category": "factual_accuracy",
+            "prompt": "What is 2+2?",
+            "reference_answer": "4",
+        },
+    )
+    client.post(
+        "/api/test-cases",
+        json={
+            "suite_id": s["id"],
+            "name": "C2",
+            "category": "factual_accuracy",
+            "prompt": "What is the capital of France?",
+            "reference_answer": "Paris",
+        },
+    )
     # 4. run evaluation
-    run = client.post("/api/evaluations/run", json={"project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}).json()
+    run = client.post(
+        "/api/evaluations/run", json={"project_id": p["id"], "suite_id": s["id"], "model_id": m["id"]}
+    ).json()
     assert run["status"] == "completed"
     # 5. view results, investigate a case
     results = client.get(f"/api/evaluations/{run['id']}/results").json()

@@ -4,6 +4,7 @@ Rates are USD per 1,000,000 tokens (input, output). Custom per-model overrides
 on ModelConfig always take precedence so enterprises can plug in negotiated
 private rate cards or self-hosted GPU amortized rates.
 """
+
 from app.models import ModelConfig
 
 PRICING_VERSION = "2026.11"
@@ -72,8 +73,16 @@ def compute_arbitrage_roi(
     monthly_baseline = baseline_cost_per_call * monthly_calls
     monthly_candidate = candidate_cost_per_call * monthly_calls
     annual_savings = (monthly_baseline - monthly_candidate) * 12.0
-    b_cppt = (baseline_cost_per_call / (baseline_pass_rate / 100.0)) if (baseline_pass_rate and baseline_pass_rate > 0) else None
-    c_cppt = (candidate_cost_per_call / (candidate_pass_rate / 100.0)) if (candidate_pass_rate and candidate_pass_rate > 0) else None
+    b_cppt = (
+        (baseline_cost_per_call / (baseline_pass_rate / 100.0))
+        if (baseline_pass_rate and baseline_pass_rate > 0)
+        else None
+    )
+    c_cppt = (
+        (candidate_cost_per_call / (candidate_pass_rate / 100.0))
+        if (candidate_pass_rate and candidate_pass_rate > 0)
+        else None
+    )
     quality_delta_pp = (
         round(candidate_pass_rate - baseline_pass_rate, 2)
         if (baseline_pass_rate is not None and candidate_pass_rate is not None)
@@ -85,7 +94,8 @@ def compute_arbitrage_roi(
         "monthly_candidate_usd": round(monthly_candidate, 2),
         "annual_savings_usd": round(annual_savings, 2),
         "cost_reduction_pct": round((1 - candidate_cost_per_call / baseline_cost_per_call) * 100, 1)
-        if baseline_cost_per_call > 0 else None,
+        if baseline_cost_per_call > 0
+        else None,
         "baseline_cost_per_verified_pass_usd": round(b_cppt, 8) if b_cppt is not None else None,
         "candidate_cost_per_verified_pass_usd": round(c_cppt, 8) if c_cppt is not None else None,
         "quality_delta_pp": quality_delta_pp,

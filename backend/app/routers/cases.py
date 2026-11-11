@@ -59,8 +59,9 @@ def create_case(body: CaseIn, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=list[CaseOut])
-def list_cases(suite_id: str | None = None, category: str | None = None, q: str | None = None,
-               db: Session = Depends(get_db)):
+def list_cases(
+    suite_id: str | None = None, category: str | None = None, q: str | None = None, db: Session = Depends(get_db)
+):
     query = db.query(TestCase)
     if suite_id:
         query = query.filter(TestCase.suite_id == suite_id)

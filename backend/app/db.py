@@ -1,4 +1,5 @@
 """Database engine/session setup and idempotent schema migration."""
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -39,6 +40,7 @@ _COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
 
 def init_db() -> None:
     from app import models  # noqa: F401  (register entities)
+
     Base.metadata.create_all(bind=engine)
     insp = inspect(engine)
     existing_tables = set(insp.get_table_names())

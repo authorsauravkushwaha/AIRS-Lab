@@ -3,6 +3,8 @@
 Exports are built strictly from persisted evaluation rows — nothing is re-executed.
 Every generated artifact is fingerprinted with SHA-256.
 """
+
+import contextlib
 import csv
 import hashlib
 import io
@@ -10,7 +12,7 @@ import json
 import os
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,6 +25,7 @@ from app.models import EvaluationResult, EvaluationRun, ModelConfig, Report, Sec
 from app.services.audit import log, verify_audit_chain
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
 
 def _get_report_dir() -> Path:
     d = Path(os.environ.get("AEGIS_REPORT_DIR", Path(__file__).resolve().parent.parent.parent / "reports_out"))
@@ -61,7 +64,7 @@ def _collect(run_id: str, title: str, db: Session) -> dict:
         "status": run.status,
         "dataset_hash": run.dataset_hash or "",
         "evaluator_version": run.evaluator_version or "2.0.0",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "audit_chain_integrity": {
             "valid": audit_chain["valid"],
             "checked_events": audit_chain["checked_events"],
@@ -96,9 +99,15 @@ def _collect(run_id: str, title: str, db: Session) -> dict:
             for f in findings
         ],
         "compliance_mapping": {
-            "frameworks": ["EU AI Act Art. 15 (Accuracy, Robustness & Cybersecurity)", "NIST AI RMF 1.0 (MEASURE)", "OWASP LLM Top 10 (2025)", "MITRE ATLAS"],
+            "frameworks": [
+                "EU AI Act Art. 15 (Accuracy, Robustness & Cybersecurity)",
+                "NIST AI RMF 1.0 (MEASURE)",
+                "OWASP LLM Top 10 (2025)",
+                "MITRE ATLAS",
+            ],
             "limitations": (
-                "Deterministic & schema checks only; UNCERTAIN results are preserved as evidence and never forced to PASS/FAIL. "
+                "Deterministic & schema checks only; UNCERTAIN results are "
+                "preserved as evidence and never forced to PASS/FAIL. "
                 "Passing fixtures do not constitute a blanket safety certification."
             ),
         },
@@ -127,19 +136,46 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
         path = report_dir / f"{rid}.csv"
         buf = io.StringIO()
         w = csv.writer(buf)
-        w.writerow(["test_case_id", "case_name", "category", "status", "method", "score", "latency_ms", "tokens", "est_cost_usd"])
+        w.writerow(
+            [
+                "test_case_id",
+                "case_name",
+                "category",
+                "status",
+                "method",
+                "score",
+                "latency_ms",
+                "tokens",
+                "est_cost_usd",
+            ]
+        )
         for r in data["results"]:
-            w.writerow([r["test_case_id"], r["case_name"], r["category"], r["status"], r["method"], r["score"], r["latency_ms"], r["tokens"], r["est_cost_usd"]])
+            w.writerow(
+                [
+                    r["test_case_id"],
+                    r["case_name"],
+                    r["category"],
+                    r["status"],
+                    r["method"],
+                    r["score"],
+                    r["latency_ms"],
+                    r["tokens"],
+                    r["est_cost_usd"],
+                ]
+            )
         path.write_bytes(buf.getvalue().encode("utf-8"))
     elif body.format == "pdf":
         from reportlab.lib.pagesizes import A4
         from reportlab.pdfgen import canvas
+
         path = report_dir / f"{rid}.pdf"
         c = canvas.Canvas(str(path), pagesize=A4)
         c.setFont("Helvetica-Bold", 15)
         c.drawString(45, 805, data["title"][:75])
         c.setFont("Helvetica", 9)
-        c.drawString(45, 790, f"AEGIS AI LAB Compliance & Reliability Evidence Dossier · Generated {data['generated_at'][:19]}Z")
+        c.drawString(
+            45, 790, f"AEGIS AI LAB Compliance & Reliability Evidence Dossier · Generated {data['generated_at'][:19]}Z"
+        )
         y = 768
         s = data["summary"]
         ci = s.get("wilson_95_ci")
@@ -148,9 +184,20 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
             f"Run ID: {data['run_id']}   Kind: {data['kind']}   Status: {data['status']}",
             f"Model: {data['model']['name']} ({data['model']['provider']} / {data['model']['model_id']})",
             f"Dataset SHA-256: {data['dataset_hash'] or 'n/a (security suite)'}",
-            f"Audit Chain Integrity: {'VERIFIED' if data['audit_chain_integrity']['valid'] else 'BROKEN'} (head: {str(data['audit_chain_integrity']['head_hash'])[:24]}...)",
-            f"Pass Rate: {s.get('pass_rate')}%{ci_txt}   Fail: {s.get('FAIL', s.get('failures', 0))}   Uncertain: {s.get('UNCERTAIN', 0)}",
-            f"Latency Avg/P95: {s.get('avg_latency_ms')} / {s.get('p95_latency_ms')} ms   Tokens: {s.get('total_tokens', 0)}   Est. Cost: ${s.get('est_cost_usd', 0)}",
+            (
+                f"Audit Chain Integrity: "
+                f"{'VERIFIED' if data['audit_chain_integrity']['valid'] else 'BROKEN'} "
+                f"(head: {str(data['audit_chain_integrity']['head_hash'])[:24]}...)"
+            ),
+            (
+                f"Pass Rate: {s.get('pass_rate')}%{ci_txt}   "
+                f"Fail: {s.get('FAIL', s.get('failures', 0))}   "
+                f"Uncertain: {s.get('UNCERTAIN', 0)}"
+            ),
+            (
+                f"Latency Avg/P95: {s.get('avg_latency_ms')} / {s.get('p95_latency_ms')} ms   "
+                f"Tokens: {s.get('total_tokens', 0)}   Est. Cost: ${s.get('est_cost_usd', 0)}"
+            ),
             f"Governance Note: {data['limitations'][:105]}",
         ]
         for line in meta_lines:
@@ -168,7 +215,12 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
                     c.showPage()
                     y = 800
                     c.setFont("Helvetica", 8.5)
-                c.drawString(45, y, f"{r['status']:10s} {r['method'][:22]:22s} {(r['case_name'] or r['test_case_id'])[:50]:50s} {r['latency_ms']:.0f}ms")
+                c.drawString(
+                    45,
+                    y,
+                    f"{r['status']:10s} {r['method'][:22]:22s} "
+                    f"{(r['case_name'] or r['test_case_id'])[:50]:50s} {r['latency_ms']:.0f}ms",
+                )
                 y -= 12
 
         if data["security_findings"]:
@@ -185,7 +237,12 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
                     c.showPage()
                     y = 800
                     c.setFont("Helvetica", 8.5)
-                c.drawString(45, y, f"[{f['severity'].upper():8s}] {f['outcome'].upper():9s} {f['owasp_id'][:24]:24s} {f['test_name'][:42]}")
+                c.drawString(
+                    45,
+                    y,
+                    f"[{f['severity'].upper():8s}] {f['outcome'].upper():9s} "
+                    f"{f['owasp_id'][:24]:24s} {f['test_name'][:42]}",
+                )
                 y -= 12
         c.save()
     elif body.format == "bundle":
@@ -193,9 +250,33 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
         evidence_bytes = json.dumps(data, indent=2, sort_keys=True).encode("utf-8")
         csv_buf = io.StringIO()
         w = csv.writer(csv_buf)
-        w.writerow(["test_case_id", "case_name", "category", "status", "method", "score", "latency_ms", "tokens", "est_cost_usd"])
+        w.writerow(
+            [
+                "test_case_id",
+                "case_name",
+                "category",
+                "status",
+                "method",
+                "score",
+                "latency_ms",
+                "tokens",
+                "est_cost_usd",
+            ]
+        )
         for r in data["results"]:
-            w.writerow([r["test_case_id"], r["case_name"], r["category"], r["status"], r["method"], r["score"], r["latency_ms"], r["tokens"], r["est_cost_usd"]])
+            w.writerow(
+                [
+                    r["test_case_id"],
+                    r["case_name"],
+                    r["category"],
+                    r["status"],
+                    r["method"],
+                    r["score"],
+                    r["latency_ms"],
+                    r["tokens"],
+                    r["est_cost_usd"],
+                ]
+            )
         csv_bytes = csv_buf.getvalue().encode("utf-8")
         verify_md = (
             "# AEGIS AI LAB — Offline Evidence Bundle Verification\n\n"
@@ -204,7 +285,7 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
             f"- Dataset SHA-256: `{data['dataset_hash']}`\n"
             f"- Evaluator Version: `{data['evaluator_version']}`\n\n"
             "Verify offline with:\n```bash\npython -m airs_cli verify-bundle <bundle.airsbundle.zip>\n```\n"
-        ).encode("utf-8")
+        ).encode()
         manifest = {
             "bundle_id": rid,
             "format_version": "2.0",
@@ -218,7 +299,9 @@ def create_report(body: ReportRequest, db: Session = Depends(get_db)):
                 "VERIFY.md": _sha256_bytes(verify_md),
             },
         }
-        manifest["bundle_signature_sha256"] = _sha256_bytes(json.dumps(manifest["files"], sort_keys=True).encode("utf-8"))
+        manifest["bundle_signature_sha256"] = _sha256_bytes(
+            json.dumps(manifest["files"], sort_keys=True).encode("utf-8")
+        )
         with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("run_evidence.json", evidence_bytes)
             zf.writestr("results.csv", csv_bytes)
@@ -286,10 +369,8 @@ def delete_report(report_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Report not found")
     path = Path(r.file_path)
     if path.exists():
-        try:
+        with contextlib.suppress(OSError):
             path.unlink()
-        except OSError:
-            pass
     log(db, "report.deleted", entity=r.id, detail=f"format={r.format}")
     db.delete(r)
     db.commit()

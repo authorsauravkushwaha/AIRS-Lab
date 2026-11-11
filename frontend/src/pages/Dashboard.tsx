@@ -33,8 +33,9 @@ export default function Dashboard() {
   const [data, setData] = useState<Overview | null>(null)
   const [error, setError] = useState('')
   const load = () => {
-    setError('')
-    api<Overview>('/api/dashboard/overview').then(setData).catch((e) => setError(e instanceof Error ? e.message : String(e)))
+    api<Overview>('/api/dashboard/overview')
+      .then((d) => { setData(d); setError('') })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
   }
   useEffect(load, [])
 
