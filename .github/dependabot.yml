@@ -1,8 +1,8 @@
 version: 2
 updates:
-  # Python (root + backend): weekly, grouped, minors/patches only.
-  # Major bumps (e.g. reportlab 4 -> 5) arrive as individual reviewable PRs
-  # only when they are the sole update; see groups below for everything else.
+  # Python (root + backend): weekly, grouped minor/patch updates.
+  # Constraint-widening majors (e.g. reportlab 4 -> 5) still arrive as
+  # individual PRs, capped at 3 open, so each is reviewed deliberately.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -23,8 +23,9 @@ updates:
       backend-python-minor-patch:
         update-types: ["minor", "patch"]
 
-  # Frontend: group non-major updates; majors stay individual because they
-  # routinely need code changes (Vite major bumps, React types, etc.).
+  # Frontend: grouped minor/patch only. ALL major bumps are ignored —
+  # majors here (Vite, Tailwind, React, recharts) are breaking migrations
+  # that need hands-on work, not automated PRs.
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
@@ -37,22 +38,11 @@ updates:
         patterns:
           - "*"
     ignore:
-      # Major frontend toolchain bumps are merged deliberately, one at a time,
-      # after the full CI matrix (incl. Playwright e2e) is green.
-      - dependency-name: "vite"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@vitejs/plugin-react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@types/react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@types/react-dom"
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # GitHub Actions: grouped into one weekly PR.
+  # GitHub Actions: one grouped weekly PR (action majors are usually
+  # drop-in; CI verifies before merge).
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
